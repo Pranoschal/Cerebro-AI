@@ -123,22 +123,37 @@ export default function NotesPage() {
 
       if (notesRes.ok) {
         const notesData = await notesRes.json();
-        setNotes(notesData);
-        if (notesData.length > 0 && !selectedNote) {
-          const firstUnarchived = notesData.find((n: any) => !n.isArchived) || notesData[0];
-          setSelectedNote(firstUnarchived);
+        if (Array.isArray(notesData)) {
+          setNotes(notesData);
+          if (notesData.length > 0 && !selectedNote) {
+            const firstUnarchived = notesData.find((n: any) => !n.isArchived) || notesData[0];
+            setSelectedNote(firstUnarchived);
+          }
+        } else {
+          setNotes([]);
         }
+      } else {
+        setNotes([]);
       }
 
       if (foldersRes.ok) {
-        setFolders(await foldersRes.json());
+        const foldersData = await foldersRes.json();
+        setFolders(Array.isArray(foldersData) ? foldersData : []);
+      } else {
+        setFolders([]);
       }
 
       if (tagsRes.ok) {
-        setTags(await tagsRes.json());
+        const tagsData = await tagsRes.json();
+        setTags(Array.isArray(tagsData) ? tagsData : []);
+      } else {
+        setTags([]);
       }
     } catch (err) {
       console.error('Initial data fetch error:', err);
+      setNotes([]);
+      setFolders([]);
+      setTags([]);
     } finally {
       setIsLoading(false);
     }
@@ -281,12 +296,16 @@ export default function NotesPage() {
     setActiveMobileView('editor');
   };
 
-  // Filter notes displayed in sidebar
-  const displayedNotes = (searchResults !== null ? searchResults : notes).filter((n) => {
+  // Filter notes displayed in sidebar with safe array guards
+  const safeNotes = Array.isArray(notes) ? notes : [];
+  const safeSearchResults = Array.isArray(searchResults) ? searchResults : null;
+  const noteSource = safeSearchResults !== null ? safeSearchResults : safeNotes;
+  const displayedNotes = noteSource.filter((n) => {
+    if (!n) return false;
     if (showArchived) return n.isArchived;
     if (n.isArchived) return false;
     if (activeFolderId && n.folderId !== activeFolderId) return false;
-    if (activeTag && !n.tags?.some((t: any) => t.name === activeTag)) return false;
+    if (activeTag && !n.tags?.some((t: any) => t?.name === activeTag)) return false;
     return true;
   });
 
@@ -353,7 +372,7 @@ export default function NotesPage() {
                 <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> All Notes
               </span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400">
-                {notes.filter((n) => !n.isArchived).length}
+                {safeNotes.filter((n) => n && !n.isArchived).length}
               </span>
             </button>
 
@@ -407,7 +426,7 @@ export default function NotesPage() {
             </button>
           </div>
           <div className="flex flex-col gap-0.5 text-xs max-h-36 overflow-y-auto">
-            {folders.map((f) => (
+            {(Array.isArray(folders) ? folders : []).map((f) => (
               <button
                 key={f.id}
                 onClick={() => {
@@ -439,7 +458,7 @@ export default function NotesPage() {
             Tags
           </p>
           <div className="flex flex-wrap gap-1.5 px-3 max-h-32 overflow-y-auto">
-            {tags.map((t) => (
+            {(Array.isArray(tags) ? tags : []).map((t) => (
               <button
                 key={t.id}
                 onClick={() => {
