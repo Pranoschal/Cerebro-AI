@@ -12,12 +12,15 @@ import {
   RotateCw,
   Plus,
   X,
-  Clock,
-  Pin,
   Trash2,
-  Share2,
   ArrowLeft,
   Save,
+  Wand2,
+  Lightbulb,
+  FileEdit,
+  Send,
+  CornerDownLeft,
+  ChevronDown,
 } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
 import ModelSelector from './ModelSelector';
@@ -72,6 +75,13 @@ export default function NoteEditor({
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isSuggestingTags, setIsSuggestingTags] = useState(false);
 
+  // AI Writing Copilot State
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isCopilotGenerating, setIsCopilotGenerating] = useState(false);
+  const [customCopilotPrompt, setCustomCopilotPrompt] = useState('');
+  const [copilotStatusMsg, setCopilotStatusMsg] = useState<string | null>(null);
+  const copilotDropdownRef = useRef<HTMLDivElement>(null);
+
   const initialLoadRef = useRef(true);
 
   // Set default view mode based on screen width on initial mount
@@ -96,11 +106,23 @@ export default function NoteEditor({
       setTags(note.tags ? note.tags.map((t) => t.name) : []);
       setSaveStatus('saved');
       setHasUnsavedChanges(false);
+      setCopilotStatusMsg(null);
       setTimeout(() => {
         initialLoadRef.current = false;
       }, 50);
     }
   }, [note?.id]);
+
+  // Close copilot popover on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (copilotDropdownRef.current && !copilotDropdownRef.current.contains(e.target as Node)) {
+        setIsCopilotOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Track unsaved changes when user types or changes metadata
   const handleTitleChange = (val: string) => {
@@ -152,18 +174,82 @@ export default function NoteEditor({
     }
   }, [note, title, content, summary, folderId, tags, saveStatus, onUpdateNote]);
 
-  // Keyboard shortcut: Ctrl+S / Cmd+S to save
+  // AI Copilot Action Generator
+  const handleAICopilotAction = async (
+    action: 'continue' | 'outline' | 'polish' | 'custom',
+    promptText?: string
+  ) => {
+    if (!note || isCopilotGenerating) return;
+    setIsCopilotGenerating(true);
+    setCopilotStatusMsg(
+      action === 'continue'
+        ? 'AI is continuing your thoughts...'
+        : action === 'outline'
+        ? 'Generating structured outline...'
+        : action === 'polish'
+        ? 'Polishing and refining prose...'
+        : 'Generating custom AI response...'
+    );
+
+    try {
+      const res = await authFetch('/api/ai/assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          title,
+          content,
+          prompt: promptText || customCopilotPrompt,
+          model: selectedModel,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const generated = data.result || '';
+
+        if (action === 'polish') {
+          setContent(generated);
+        } else {
+          // Append with proper spacing
+          const separator = content.trim() ? '\n\n' : '';
+          setContent((prev) => prev + separator + generated);
+        }
+
+        setHasUnsavedChanges(true);
+        setCustomCopilotPrompt('');
+        setIsCopilotOpen(false);
+        setCopilotStatusMsg('✨ AI content added to note!');
+        setTimeout(() => setCopilotStatusMsg(null), 3000);
+      } else {
+        setCopilotStatusMsg('Failed to generate AI assistance.');
+        setTimeout(() => setCopilotStatusMsg(null), 3000);
+      }
+    } catch (err) {
+      console.error('AI Copilot request failed:', err);
+      setCopilotStatusMsg('Error reaching AI service.');
+      setTimeout(() => setCopilotStatusMsg(null), 3000);
+    } finally {
+      setIsCopilotGenerating(false);
+    }
+  };
+
+  // Keyboard shortcut: Ctrl+S to save, Ctrl+J for AI Continue
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         handleSaveNote();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
+        e.preventDefault();
+        handleAICopilotAction('continue');
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSaveNote]);
+  }, [handleSaveNote, content, title, selectedModel]);
 
   // AI Summarize Action
   const handleSummarize = async () => {
@@ -313,10 +399,119 @@ export default function NoteEditor({
           </div>
         </div>
 
-        {/* Right: AI Model Selector, AI Triggers & View Toggle */}
+        {/* Right: AI Model Selector, AI Assist, AI Triggers & View Toggle */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {/* Dynamic AI Model Selector */}
           <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+
+          {/* AI WRITING COPILOT DROPDOWN */}
+          <div className="relative" ref={copilotDropdownRef}>
+            <button
+              onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+              disabled={isCopilotGenerating}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all border ${
+                isCopilotGenerating
+                  ? 'bg-purple-600/30 border-purple-500/50 text-purple-200 animate-pulse'
+                  : 'bg-gradient-to-r from-indigo-600/30 to-purple-600/30 hover:from-indigo-600/40 hover:to-purple-600/40 text-purple-200 border-purple-500/40'
+              }`}
+              title="AI Writing Assistant (Ctrl+J)"
+            >
+              <Wand2 className={`w-3.5 h-3.5 ${isCopilotGenerating ? 'animate-spin text-purple-300' : 'text-purple-400'}`} />
+              <span className="hidden sm:inline">{isCopilotGenerating ? 'Writing...' : 'AI Assist'}</span>
+              <ChevronDown className="w-3 h-3 text-purple-400" />
+            </button>
+
+            {isCopilotOpen && (
+              <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 rounded-2xl bg-[#0b0f19] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2.5 z-[100] animate-in fade-in slide-in-from-top-1 text-xs">
+                <div className="px-1 py-1 text-[10px] font-mono text-slate-400 uppercase tracking-wider border-b border-white/10 flex items-center justify-between mb-1.5">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-purple-400" /> In-Note AI Copilot
+                  </span>
+                  <span className="text-[9px] text-slate-500">Ctrl+J to write</span>
+                </div>
+
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleAICopilotAction('continue')}
+                    className="w-full text-left p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-purple-500/30 text-slate-200 flex items-center gap-2 transition-all group"
+                  >
+                    <div className="p-1 rounded-lg bg-indigo-500/20 text-indigo-400 shrink-0">
+                      <Sparkles className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs text-slate-100 group-hover:text-purple-300">
+                        Continue Writing
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Expand note from current point
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleAICopilotAction('outline')}
+                    className="w-full text-left p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-purple-500/30 text-slate-200 flex items-center gap-2 transition-all group"
+                  >
+                    <div className="p-1 rounded-lg bg-amber-500/20 text-amber-400 shrink-0">
+                      <Lightbulb className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs text-slate-100 group-hover:text-amber-300">
+                        Brainstorm Outline
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Add structured bullet outline & key ideas
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleAICopilotAction('polish')}
+                    className="w-full text-left p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-purple-500/30 text-slate-200 flex items-center gap-2 transition-all group"
+                  >
+                    <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0">
+                      <FileEdit className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs text-slate-100 group-hover:text-emerald-300">
+                        Polish & Fix Grammar
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Improve clarity, flow & technical phrasing
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Custom Instruction Box */}
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <div className="text-[10px] text-slate-400 mb-1">Custom AI prompt:</div>
+                  <div className="flex items-center gap-1.5 bg-slate-900/90 rounded-xl p-1 border border-white/10 focus-within:border-purple-500/60">
+                    <input
+                      type="text"
+                      value={customCopilotPrompt}
+                      onChange={(e) => setCustomCopilotPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && customCopilotPrompt.trim()) {
+                          e.preventDefault();
+                          handleAICopilotAction('custom', customCopilotPrompt);
+                        }
+                      }}
+                      placeholder="e.g. Add TypeScript code example..."
+                      className="bg-transparent border-none outline-none text-[11px] text-slate-200 placeholder-slate-500 flex-1 px-1.5 py-0.5"
+                    />
+                    <button
+                      onClick={() => handleAICopilotAction('custom', customCopilotPrompt)}
+                      disabled={!customCopilotPrompt.trim()}
+                      className="p-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:hover:bg-purple-600 shrink-0"
+                    >
+                      <Send className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={handleSummarize}
@@ -380,6 +575,20 @@ export default function NoteEditor({
           </button>
         </div>
       </div>
+
+      {/* Floating Copilot Status Pill */}
+      {copilotStatusMsg && (
+        <div className="px-4 sm:px-8 pt-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-950/80 border border-purple-500/40 text-purple-200 text-xs font-mono animate-in fade-in slide-in-from-top-1 shadow-lg">
+            {isCopilotGenerating ? (
+              <RotateCw className="w-3 h-3 animate-spin text-purple-400" />
+            ) : (
+              <Sparkles className="w-3 h-3 text-emerald-400" />
+            )}
+            <span>{copilotStatusMsg}</span>
+          </div>
+        </div>
+      )}
 
       {/* Note Title & Tags Bar */}
       <div className="px-4 sm:px-8 pt-4 sm:pt-6 pb-2">
@@ -451,7 +660,7 @@ export default function NoteEditor({
             <textarea
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
-              placeholder="Write your thoughts in Markdown (e.g. # Architecture, - Points, `code`)..."
+              placeholder="Write your thoughts in Markdown (e.g. # Architecture, - Points, `code`)... Or click 'AI Assist' / press Ctrl+J to write with AI!"
               className="w-full h-full bg-slate-950/40 p-4 sm:p-5 rounded-2xl border border-white/5 focus:border-indigo-500/50 outline-none text-slate-200 placeholder-slate-600 font-mono text-xs sm:text-sm leading-relaxed resize-none transition-all shadow-inner"
             />
           </div>
