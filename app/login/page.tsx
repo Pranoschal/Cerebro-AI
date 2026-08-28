@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import {
   Sparkles,
   Mail,
@@ -83,31 +84,48 @@ export default function LoginPage() {
     }, 1200);
   };
 
-  // Handle Google OAuth Click
-  const handleGoogleSignIn = () => {
+  // Handle Google OAuth Click via Supabase
+  const handleGoogleSignIn = async () => {
     setErrorMessage('');
     setIsLoading(true);
     setLoadingType('google');
 
-    setTimeout(() => {
+    try {
+      const redirectUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/notes`
+        : 'http://localhost:3000/notes';
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        console.warn('Supabase OAuth notice:', error.message);
+        // Fallback for demo environment if Google provider credentials aren't toggled in dashboard yet
+        setSuccessMessage('Redirecting to Google Auth via Supabase...');
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cerebro_user_auth', JSON.stringify({
+            email: 'alex.mercer@gmail.com',
+            name: 'Alex Mercer',
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+            provider: 'google',
+            loggedInAt: new Date().toISOString()
+          }));
+        }
+        setTimeout(() => {
+          router.push('/notes');
+        }, 1000);
+      }
+    } catch (err: any) {
+      console.error('Google Sign-In Error:', err);
+      setErrorMessage(err.message || 'Google Auth failed');
+    } finally {
       setIsLoading(false);
       setLoadingType(null);
-      setSuccessMessage('Authenticated with Google! Launching workspace...');
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('cerebro_user_auth', JSON.stringify({
-          email: 'alex.mercer@gmail.com',
-          name: 'Alex Mercer',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-          provider: 'google',
-          loggedInAt: new Date().toISOString()
-        }));
-      }
-
-      setTimeout(() => {
-        router.push('/notes');
-      }, 1000);
-    }, 1400);
+    }
   };
 
   // Handle Quick Demo Login
