@@ -89,10 +89,10 @@ export default function ModelSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 rounded-2xl glass-panel bg-[#0d1322]/95 border border-white/15 shadow-2xl p-1.5 z-50 animate-in fade-in slide-in-from-top-1 text-xs">
-          <div className="px-2.5 py-1.5 text-[10px] font-mono text-slate-400 uppercase tracking-wider border-b border-white/5 flex items-center justify-between">
+        <div className="absolute right-0 top-full mt-2 w-72 sm:w-84 rounded-2xl bg-[#0b0f19] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2 z-[100] animate-in fade-in slide-in-from-top-1 text-xs">
+          <div className="px-2.5 py-1.5 text-[10px] font-mono text-slate-400 uppercase tracking-wider border-b border-white/10 flex items-center justify-between">
             <span>Groq Neural Engines</span>
-            <span className="text-emerald-400 flex items-center gap-1">
+            <span className="text-emerald-400 flex items-center gap-1 font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live API
             </span>
           </div>

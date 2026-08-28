@@ -247,7 +247,7 @@ export default function NoteEditor({
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#090d16]/80 backdrop-blur-md">
       {/* Top Header & AI Toolbar */}
-      <div className="px-3 sm:px-6 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2.5 glass-panel">
+      <div className="px-3 sm:px-6 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2.5 glass-panel relative z-30">
         {/* Left: Mobile Back Button & Save Action / Status */}
         <div className="flex items-center gap-2 flex-wrap">
           {onBack && (
