@@ -611,11 +611,9 @@ export default function NotesPage() {
       {/* 2b. MIDDLE COLUMN: NOTE LIST + SEARCH BAR */}
       <div
         className={`${
-          isNotesListCollapsed
-            ? 'hidden'
-            : activeMobileView === 'list'
-            ? 'flex flex-1 md:flex-initial w-full md:w-80 lg:w-96'
-            : 'hidden md:flex md:w-80 lg:w-96'
+          activeMobileView === 'list' ? 'flex flex-1 w-full' : 'hidden'
+        } ${
+          isNotesListCollapsed ? 'md:hidden' : 'md:flex md:w-80 lg:w-96'
         } bg-[#0a0e1a] border-r border-white/10 flex-col shrink-0 transition-all duration-200 h-full`}
       >
         {/* Notes Overview Panel Header with Collapse Button */}
