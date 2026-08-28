@@ -25,6 +25,8 @@ import SearchBar from '@/components/SearchBar';
 import NoteList from '@/components/NoteList';
 import NoteEditor from '@/components/NoteEditor';
 import AIAskPanel from '@/components/AIAskPanel';
+import { supabase } from '@/lib/supabase';
+import { authFetch, getStoredUser, AuthUser } from '@/lib/api-client';
 
 export default function NotesPage() {
   const router = useRouter();
@@ -32,7 +34,7 @@ export default function NotesPage() {
   const [selectedNote, setSelectedNote] = useState<any | null>(null);
   const [folders, setFolders] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
-  const [userAuth, setUserAuth] = useState<any>(null);
+  const [userAuth, setUserAuth] = useState<AuthUser | null>(null);
   
   // Navigation & Filter state
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -48,20 +50,62 @@ export default function NotesPage() {
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
-  // Initial Fetch & Auth sync
+  // Initial Fetch & Auth sync with Supabase
   useEffect(() => {
-    fetchInitialData();
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('cerebro_user_auth');
-      if (stored) {
-        try {
-          setUserAuth(JSON.parse(stored));
-        } catch (e) {}
-      }
+    // 1. Check existing local storage
+    const stored = getStoredUser();
+    if (stored) {
+      setUserAuth(stored);
     }
+
+    // 2. Sync with Supabase session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const u = session.user;
+        const authData: AuthUser = {
+          id: u.id,
+          email: u.email || '',
+          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0] || 'User',
+          avatar: u.user_metadata?.avatar_url || undefined,
+          provider: u.app_metadata?.provider || 'supabase',
+        };
+        setUserAuth(authData);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cerebro_user_auth', JSON.stringify(authData));
+        }
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const u = session.user;
+        const authData: AuthUser = {
+          id: u.id,
+          email: u.email || '',
+          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0] || 'User',
+          avatar: u.user_metadata?.avatar_url || undefined,
+          provider: u.app_metadata?.provider || 'supabase',
+        };
+        setUserAuth(authData);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cerebro_user_auth', JSON.stringify(authData));
+        }
+      }
+    });
+
+    fetchInitialData();
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
     if (typeof window !== 'undefined') {
       localStorage.removeItem('cerebro_user_auth');
     }
@@ -72,9 +116,9 @@ export default function NotesPage() {
     setIsLoading(true);
     try {
       const [notesRes, foldersRes, tagsRes] = await Promise.all([
-        fetch('/api/notes'),
-        fetch('/api/folders'),
-        fetch('/api/tags'),
+        authFetch('/api/notes'),
+        authFetch('/api/folders'),
+        authFetch('/api/tags'),
       ]);
 
       if (notesRes.ok) {
@@ -104,7 +148,7 @@ export default function NotesPage() {
   // Create new note
   const handleCreateNote = async () => {
     try {
-      const res = await fetch('/api/notes', {
+      const res = await authFetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -131,7 +175,7 @@ export default function NotesPage() {
     e.preventDefault();
     if (!newFolderName.trim()) return;
     try {
-      const res = await fetch('/api/folders', {
+      const res = await authFetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newFolderName }),
@@ -151,7 +195,7 @@ export default function NotesPage() {
   const handleTogglePin = async (note: any, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`/api/notes/${note.id}`, {
+      const res = await authFetch(`/api/notes/${note.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPinned: !note.isPinned }),
@@ -169,7 +213,7 @@ export default function NotesPage() {
   const handleToggleArchive = async (note: any, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`/api/notes/${note.id}`, {
+      const res = await authFetch(`/api/notes/${note.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isArchived: !note.isArchived }),
@@ -189,7 +233,7 @@ export default function NotesPage() {
   // Delete Note permanently
   const handleDeleteNote = async (id: string) => {
     try {
-      const res = await fetch(`/api/notes/${id}?permanent=true`, {
+      const res = await authFetch(`/api/notes/${id}?permanent=true`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -216,7 +260,7 @@ export default function NotesPage() {
       setSelectedNote(target);
     } else {
       // Fetch directly if not in current list
-      fetch(`/api/notes/${id}`)
+      authFetch(`/api/notes/${id}`)
         .then((r) => r.json())
         .then((n) => {
           if (n && n.id) {
@@ -402,15 +446,15 @@ export default function NotesPage() {
                 />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                  {userAuth?.name ? userAuth.name.charAt(0).toUpperCase() : 'A'}
+                  {userAuth?.name ? userAuth.name.charAt(0).toUpperCase() : 'U'}
                 </div>
               )}
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-slate-200 truncate">
-                  {userAuth?.name || 'Alex Mercer'}
+                  {userAuth?.name || 'User'}
                 </p>
                 <p className="text-[10px] text-slate-500 truncate">
-                  {userAuth?.email || 'demo@notes.ai'}
+                  {userAuth?.email || 'Authenticated'}
                 </p>
               </div>
             </div>

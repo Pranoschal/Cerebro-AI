@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, DEFAULT_USER_ID, ensureDemoUser } from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { getEmbedding } from '@/lib/embeddings';
 import { searchVectors } from '@/lib/qdrant';
 
 // Unified search logic handling both QUERY and POST methods
 async function handleSearch(req: NextRequest) {
   try {
-    await ensureDemoUser();
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
     let body: any = {};
     try {
@@ -89,7 +91,7 @@ async function handleSearch(req: NextRequest) {
       }
     }
 
-    // Fetch full note objects from Postgres/SQLite
+    // Fetch full note objects from Postgres
     const notes = await prisma.note.findMany({
       where: {
         id: { in: noteIds },
@@ -139,4 +141,3 @@ export async function GET(req: NextRequest) {
   } as unknown as NextRequest;
   return handleSearch(fakeReq);
 }
-

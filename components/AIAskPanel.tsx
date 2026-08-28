@@ -13,6 +13,7 @@ import {
   Zap,
   Info,
 } from 'lucide-react';
+import { authFetch } from '@/lib/api-client';
 
 interface Citation {
   index: number;
@@ -86,13 +87,13 @@ export default function AIAskPanel({
 
       let res: Response;
       try {
-        res = await fetch('/api/ai/ask', {
+        res = await authFetch('/api/ai/ask', {
           method: 'QUERY',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       } catch {
-        res = await fetch('/api/ai/ask', {
+        res = await authFetch('/api/ai/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -100,7 +101,7 @@ export default function AIAskPanel({
       }
 
       if (!res.ok && res.status === 405) {
-        res = await fetch('/api/ai/ask', {
+        res = await authFetch('/api/ai/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),

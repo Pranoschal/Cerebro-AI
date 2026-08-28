@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, DEFAULT_USER_ID, ensureDemoUser } from '@/lib/db';
+import { prisma, ensureUser } from '@/lib/db';
 import { syncNoteEmbedding } from '@/lib/sync-embeddings';
 
 // GET /api/notes - List notes with optional filters (folderId, tag, isArchived, isPinned, cursor, limit)
 export async function GET(req: NextRequest) {
   try {
-    await ensureDemoUser();
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await ensureUser(
+      userId,
+      req.headers.get('x-user-email') || undefined,
+      req.headers.get('x-user-name') || undefined
+    );
+
     const { searchParams } = new URL(req.url);
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
     const folderId = searchParams.get('folderId');
     const tag = searchParams.get('tag');
     const isArchived = searchParams.get('isArchived') === 'true';
@@ -58,8 +67,17 @@ export async function GET(req: NextRequest) {
 // POST /api/notes - Create new note
 export async function POST(req: NextRequest) {
   try {
-    await ensureDemoUser();
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await ensureUser(
+      userId,
+      req.headers.get('x-user-email') || undefined,
+      req.headers.get('x-user-name') || undefined
+    );
+
     const body = await req.json();
     const { title = 'Untitled Note', content = '', folderId = null, tags = [], isPinned = false } = body;
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Sparkles, SlidersHorizontal, Tag, Folder as FolderIcon, X, Zap } from 'lucide-react';
+import { authFetch } from '@/lib/api-client';
 
 interface SearchBarProps {
   onSearchResults: (results: any[], isSearching: boolean, queryInfo: { text: string; mode: string }) => void;
@@ -66,7 +67,7 @@ export default function SearchBar({
       // Attempt standard QUERY HTTP method with fallback to POST as documented in spec
       let response: Response;
       try {
-        response = await fetch('/api/notes/search', {
+        response = await authFetch('/api/notes/search', {
           method: 'QUERY',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -74,7 +75,7 @@ export default function SearchBar({
         setMethodUsed('QUERY');
       } catch (queryErr) {
         // Fallback to POST
-        response = await fetch('/api/notes/search', {
+        response = await authFetch('/api/notes/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -84,7 +85,7 @@ export default function SearchBar({
 
       // If browser fetch didn't accept QUERY or returned 405, use POST
       if (!response.ok && response.status === 405) {
-        response = await fetch('/api/notes/search', {
+        response = await authFetch('/api/notes/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),

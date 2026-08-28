@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, DEFAULT_USER_ID, ensureDemoUser } from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { getEmbedding } from '@/lib/embeddings';
 import { searchVectors } from '@/lib/qdrant';
 import { callGroqChat } from '@/lib/ai';
@@ -7,8 +7,10 @@ import { callGroqChat } from '@/lib/ai';
 // Core RAG logic: Retrieve top-K relevant notes via vector embeddings and synthesize answer with citations
 async function handleAskRAG(req: NextRequest) {
   try {
-    await ensureDemoUser();
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
     let body: any = {};
     try {
@@ -108,4 +110,3 @@ Guidelines:
 export async function POST(req: NextRequest) {
   return handleAskRAG(req);
 }
-

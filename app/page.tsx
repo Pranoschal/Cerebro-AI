@@ -114,7 +114,7 @@ export default function HomePage() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-slate-200 font-semibold text-sm shadow-lg hover:border-indigo-500/40 transition-all flex items-center justify-center gap-2.5 backdrop-blur-md"
           >
             <Bot className="w-4 h-4 text-purple-400" />
-            <span>Try Demo Workspace</span>
+            <span>Open Workspace</span>
           </Link>
         </div>
 
@@ -180,10 +180,10 @@ export default function HomePage() {
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold">AM</div>
+                  <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold">U</div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-slate-200 truncate">Alex Mercer</p>
-                    <p className="text-[9px] text-slate-500 truncate">alex.mercer@gmail.com</p>
+                    <p className="text-[11px] font-semibold text-slate-200 truncate">Your Account</p>
+                    <p className="text-[9px] text-slate-500 truncate">Sign in to get started</p>
                   </div>
                 </div>
               </div>

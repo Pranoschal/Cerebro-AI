@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   // Status State
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingType, setLoadingType] = useState<'google' | 'form' | 'demo' | null>(null);
+  const [loadingType, setLoadingType] = useState<'google' | 'form' | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
@@ -72,7 +72,7 @@ export default function LoginPage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('cerebro_user_auth', JSON.stringify({
           email,
-          name: fullName || email.split('@')[0] || 'Alex Mercer',
+          name: fullName || email.split('@')[0],
           provider: 'email',
           loggedInAt: new Date().toISOString()
         }));
@@ -103,21 +103,8 @@ export default function LoginPage() {
       });
 
       if (error) {
-        console.warn('Supabase OAuth notice:', error.message);
-        // Fallback for demo environment if Google provider credentials aren't toggled in dashboard yet
-        setSuccessMessage('Redirecting to Google Auth via Supabase...');
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('cerebro_user_auth', JSON.stringify({
-            email: 'alex.mercer@gmail.com',
-            name: 'Alex Mercer',
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-            provider: 'google',
-            loggedInAt: new Date().toISOString()
-          }));
-        }
-        setTimeout(() => {
-          router.push('/notes');
-        }, 1000);
+        console.error('Supabase OAuth error:', error.message);
+        setErrorMessage(error.message || 'Google sign-in failed. Please try again.');
       }
     } catch (err: any) {
       console.error('Google Sign-In Error:', err);
@@ -128,30 +115,7 @@ export default function LoginPage() {
     }
   };
 
-  // Handle Quick Demo Login
-  const handleDemoLogin = () => {
-    setIsLoading(true);
-    setLoadingType('demo');
 
-    setTimeout(() => {
-      setIsLoading(false);
-      setLoadingType(null);
-      setSuccessMessage('Welcome to Demo Mode! Redirecting...');
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('cerebro_user_auth', JSON.stringify({
-          email: 'demo@cerebro.ai',
-          name: 'Alex Mercer (Demo)',
-          provider: 'demo',
-          loggedInAt: new Date().toISOString()
-        }));
-      }
-
-      setTimeout(() => {
-        router.push('/notes');
-      }, 800);
-    }, 800);
-  };
 
   // Handle Forgot Password submission
   const handleForgotSubmit = (e: React.FormEvent) => {
@@ -369,7 +333,7 @@ export default function LoginPage() {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Alex Mercer"
+                    placeholder="e.g. John Doe"
                     className="w-full bg-slate-900/90 border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
@@ -386,7 +350,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alex.mercer@example.com"
+                  placeholder="you@example.com"
                   className="w-full bg-slate-900/90 border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all"
                 />
               </div>
@@ -462,23 +426,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Mode Login Option */}
-          <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between text-xs">
-            <span className="text-slate-400 text-[11px]">Just testing the app interface?</span>
-            <button
-              type="button"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-              className="px-3 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[11px] font-medium transition-all flex items-center gap-1.5"
-            >
-              {isLoading && loadingType === 'demo' ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Sparkles className="w-3 h-3 text-indigo-400" />
-              )}
-              Explore Demo Mode
-            </button>
-          </div>
+
         </div>
 
       </div>

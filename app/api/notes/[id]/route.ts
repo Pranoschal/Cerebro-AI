@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, DEFAULT_USER_ID } from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { syncNoteEmbedding } from '@/lib/sync-embeddings';
 import { deleteVectorPoint } from '@/lib/qdrant';
 
 // GET /api/notes/:id - Get single note
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = params;
 
     const note = await prisma.note.findFirst({
@@ -30,7 +34,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 // PATCH /api/notes/:id - Partial update note
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = params;
     const body = await req.json();
 
@@ -77,7 +85,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 // DELETE /api/notes/:id - Archive or hard delete note
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = params;
     const { searchParams } = new URL(req.url);
     const permanent = searchParams.get('permanent') === 'true';

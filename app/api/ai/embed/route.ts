@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, DEFAULT_USER_ID } from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { syncNoteEmbedding } from '@/lib/sync-embeddings';
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = req.headers.get('x-user-id') || DEFAULT_USER_ID;
+    const userId = req.headers.get('x-user-id');
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const { noteId } = body;
 

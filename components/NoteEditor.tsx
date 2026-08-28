@@ -17,6 +17,7 @@ import {
   Trash2,
   Share2,
 } from 'lucide-react';
+import { authFetch } from '@/lib/api-client';
 
 interface Note {
   id: string;
@@ -84,7 +85,7 @@ export default function NoteEditor({
     setSaveStatus('saving');
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/notes/${note.id}`, {
+        const res = await authFetch(`/api/notes/${note.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -115,7 +116,7 @@ export default function NoteEditor({
     if (!note) return;
     setIsSummarizing(true);
     try {
-      const res = await fetch('/api/ai/summarize', {
+      const res = await authFetch('/api/ai/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ noteId: note.id }),
@@ -137,7 +138,7 @@ export default function NoteEditor({
     if (!note) return;
     setIsSuggestingTags(true);
     try {
-      const res = await fetch('/api/ai/tag-suggest', {
+      const res = await authFetch('/api/ai/tag-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ noteId: note.id }),
