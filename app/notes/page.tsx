@@ -157,20 +157,23 @@ export default function NotesPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: 'New Idea & Architecture Note',
-          content: '# New Project Thought\n\n- Capture ideas\n- Synthesize with RAG AI\n\n```ts\nconsole.log("Vector synced note");\n```',
+          title: 'Untitled Note',
+          content: '# New Note\n\nStart writing your thoughts here...',
           folderId: activeFolderId,
-          tags: activeTag ? [activeTag] : ['draft', 'ideas'],
+          tags: activeTag ? [activeTag] : [],
         }),
       });
 
       if (res.ok) {
         const newNote = await res.json();
-        setNotes([newNote, ...notes]);
+        setNotes((prev) => [newNote, ...prev]);
         setSelectedNote(newNote);
         setActiveMobileView('editor');
         setIsMobileSidebarOpen(false);
         fetchInitialData();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error('Failed to create note (status ' + res.status + '):', errData);
       }
     } catch (e) {
       console.error('Error creating note:', e);
@@ -185,13 +188,17 @@ export default function NotesPage() {
       const res = await authFetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newFolderName }),
+        body: JSON.stringify({ name: newFolderName.trim() }),
       });
       if (res.ok) {
         const folder = await res.json();
-        setFolders([...folders, folder]);
+        setFolders((prev) => [...prev, folder]);
         setNewFolderName('');
         setShowNewFolderModal(false);
+        fetchInitialData();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error('Failed to create folder (status ' + res.status + '):', errData);
       }
     } catch (e) {
       console.error('Error creating folder:', e);
