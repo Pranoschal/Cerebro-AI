@@ -22,6 +22,9 @@ import {
   Menu,
   X,
   ArrowLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
+  FileText,
 } from 'lucide-react';
 
 import SearchBar from '@/components/SearchBar';
@@ -596,6 +599,26 @@ export default function NotesPage() {
             : 'hidden md:flex'
         }`}
       >
+        {/* Notes Overview Panel Header with Collapse Button */}
+        <div className="px-3.5 py-2 bg-[#090d16] border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-200 tracking-tight flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-indigo-400" /> Notes Overview
+            </span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 font-mono">
+              {displayedNotes.length}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setIsNotesListCollapsed(true)}
+            className="hidden md:flex items-center gap-1 p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            title="Collapse Notes Panel (Ctrl+\)"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
+        </div>
+
         <div className="p-2.5 sm:p-3 border-b border-white/10 bg-[#090d16]">
           <SearchBar
             folders={folders}

@@ -360,11 +360,18 @@ export default function NoteEditor({
           {onToggleNotesListCollapse && (
             <button
               onClick={onToggleNotesListCollapse}
-              className="hidden md:flex items-center gap-1 p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-white/10 transition-colors"
+              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                isNotesListCollapsed
+                  ? 'bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 shadow-sm'
+                  : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/10'
+              }`}
               title={isNotesListCollapsed ? "Expand Notes Overview (Ctrl+\\)" : "Collapse Notes Overview (Ctrl+\\)"}
             >
               {isNotesListCollapsed ? (
-                <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
+                <>
+                  <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
+                  <span className="text-[11px]">Show Notes</span>
+                </>
               ) : (
                 <PanelLeftClose className="w-4 h-4 text-slate-400" />
               )}
