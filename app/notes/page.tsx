@@ -49,6 +49,9 @@ export default function NotesPage() {
   const [isAIAskOpen, setIsAIAskOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Collapse State for Distraction-Free Writing
+  const [isNotesListCollapsed, setIsNotesListCollapsed] = useState(false);
+
   // Responsive Mobile View State
   const [activeMobileView, setActiveMobileView] = useState<'list' | 'editor'>('list');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -585,8 +588,12 @@ export default function NotesPage() {
 
       {/* 2. MIDDLE COLUMN: NOTE LIST + SEARCH BAR */}
       <div
-        className={`w-full md:w-80 lg:w-96 bg-[#0a0e1a] border-r border-white/10 flex-col shrink-0 ${
-          activeMobileView === 'list' ? 'flex flex-1 md:flex-initial h-full' : 'hidden md:flex'
+        className={`w-full md:w-80 lg:w-96 bg-[#0a0e1a] border-r border-white/10 flex-col shrink-0 transition-all duration-200 ${
+          activeMobileView === 'list'
+            ? 'flex flex-1 md:flex-initial h-full'
+            : isNotesListCollapsed
+            ? 'hidden'
+            : 'hidden md:flex'
         }`}
       >
         <div className="p-2.5 sm:p-3 border-b border-white/10 bg-[#090d16]">
@@ -642,6 +649,8 @@ export default function NotesPage() {
           onUpdateNote={updateLocalNote}
           onDeleteNote={handleDeleteNote}
           onBack={() => setActiveMobileView('list')}
+          isNotesListCollapsed={isNotesListCollapsed}
+          onToggleNotesListCollapse={() => setIsNotesListCollapsed(!isNotesListCollapsed)}
         />
       </main>
 

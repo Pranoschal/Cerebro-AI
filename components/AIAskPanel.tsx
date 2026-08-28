@@ -165,7 +165,7 @@ export default function AIAskPanel({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+            <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} align="right" />
             <button
               onClick={onClose}
               className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"

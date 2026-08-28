@@ -19,8 +19,9 @@ import {
   Lightbulb,
   FileEdit,
   Send,
-  CornerDownLeft,
   ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
 import ModelSelector from './ModelSelector';
@@ -45,6 +46,8 @@ interface NoteEditorProps {
   onUpdateNote: (updated: Note) => void;
   onDeleteNote: (id: string) => void;
   onBack?: () => void;
+  isNotesListCollapsed?: boolean;
+  onToggleNotesListCollapse?: () => void;
 }
 
 export default function NoteEditor({
@@ -54,6 +57,8 @@ export default function NoteEditor({
   onUpdateNote,
   onDeleteNote,
   onBack,
+  isNotesListCollapsed = false,
+  onToggleNotesListCollapse,
 }: NoteEditorProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -234,7 +239,7 @@ export default function NoteEditor({
     }
   };
 
-  // Keyboard shortcut: Ctrl+S to save, Ctrl+J for AI Continue
+  // Keyboard shortcuts: Ctrl+S to save, Ctrl+J for AI Continue, Ctrl+\ for Collapse toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -245,11 +250,15 @@ export default function NoteEditor({
         e.preventDefault();
         handleAICopilotAction('continue');
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\' && onToggleNotesListCollapse) {
+        e.preventDefault();
+        onToggleNotesListCollapse();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSaveNote, content, title, selectedModel]);
+  }, [handleSaveNote, content, title, selectedModel, onToggleNotesListCollapse]);
 
   // AI Summarize Action
   const handleSummarize = async () => {
@@ -319,6 +328,17 @@ export default function NoteEditor({
   if (!note) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500 min-h-[50vh]">
+        {/* Collapse unhide trigger on desktop if notes list is collapsed */}
+        {onToggleNotesListCollapse && isNotesListCollapsed && (
+          <button
+            onClick={onToggleNotesListCollapse}
+            className="hidden md:flex absolute top-4 left-4 items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-slate-300 hover:text-white text-xs shadow-lg"
+            title="Expand Notes List"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
+            <span>Show Notes List</span>
+          </button>
+        )}
         <div className="w-14 h-14 md:w-16 md:h-16 rounded-3xl bg-slate-900/60 border border-white/5 flex items-center justify-center mb-4 text-indigo-400">
           <Edit3 className="w-7 h-7 md:w-8 md:h-8" />
         </div>
@@ -334,8 +354,24 @@ export default function NoteEditor({
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#090d16]/80 backdrop-blur-md">
       {/* Top Header & AI Toolbar */}
       <div className="px-3 sm:px-6 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2.5 glass-panel relative z-30">
-        {/* Left: Mobile Back Button & Save Action / Status */}
+        {/* Left: Collapse Toggle, Mobile Back & Save Action / Status */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Desktop/Tablet Collapse Notes List Button */}
+          {onToggleNotesListCollapse && (
+            <button
+              onClick={onToggleNotesListCollapse}
+              className="hidden md:flex items-center gap-1 p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs border border-white/10 transition-colors"
+              title={isNotesListCollapsed ? "Expand Notes Overview (Ctrl+\\)" : "Collapse Notes Overview (Ctrl+\\)"}
+            >
+              {isNotesListCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4 text-slate-400" />
+              )}
+            </button>
+          )}
+
+          {/* Mobile Back Button */}
           {onBack && (
             <button
               onClick={onBack}
@@ -401,8 +437,8 @@ export default function NoteEditor({
 
         {/* Right: AI Model Selector, AI Assist, AI Triggers & View Toggle */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          {/* Dynamic AI Model Selector */}
-          <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+          {/* Dynamic AI Model Selector (aligned left so it opens inward) */}
+          <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} align="left" />
 
           {/* AI WRITING COPILOT DROPDOWN */}
           <div className="relative" ref={copilotDropdownRef}>
