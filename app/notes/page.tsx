@@ -31,6 +31,7 @@ import SearchBar from '@/components/SearchBar';
 import NoteList from '@/components/NoteList';
 import NoteEditor from '@/components/NoteEditor';
 import AIAskPanel from '@/components/AIAskPanel';
+import ThemeToggle from '@/components/ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { authFetch, getStoredUser, AuthUser } from '@/lib/api-client';
 
@@ -52,7 +53,7 @@ export default function NotesPage() {
   const [isAIAskOpen, setIsAIAskOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Collapse State for Distraction-Free Writing
+  // Collapse State for Distraction-Free Writing (Desktop & Tablet)
   const [isNotesListCollapsed, setIsNotesListCollapsed] = useState(false);
 
   // Responsive Mobile View State
@@ -111,18 +112,6 @@ export default function NotesPage() {
     };
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.error('Logout error:', e);
-    }
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('cerebro_user_auth');
-    }
-    router.push('/login');
-  };
-
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
@@ -133,170 +122,162 @@ export default function NotesPage() {
       ]);
 
       if (notesRes.ok) {
-        const data = await notesRes.json();
-        setNotes(data.notes || []);
-        if (data.notes && data.notes.length > 0 && !selectedNote) {
-          setSelectedNote(data.notes[0]);
+        const notesData = await notesRes.json();
+        setNotes(notesData);
+        if (notesData.length > 0 && !selectedNote) {
+          const firstUnarchived = notesData.find((n: any) => !n.isArchived) || notesData[0];
+          setSelectedNote(firstUnarchived);
         }
       }
 
       if (foldersRes.ok) {
-        const data = await foldersRes.json();
-        setFolders(data.folders || []);
+        setFolders(await foldersRes.json());
       }
 
       if (tagsRes.ok) {
-        const data = await tagsRes.json();
-        setTags(data.tags || []);
+        setTags(await tagsRes.json());
       }
     } catch (err) {
-      console.error('Error loading notes app data:', err);
+      console.error('Initial data fetch error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Create new note
+  // Sign out handler
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('cerebro_user_auth');
+      }
+      router.push('/login');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
+
+  // Note CRUD operations
   const handleCreateNote = async () => {
     try {
-      const res = await authFetch('/api/notes', {
+      const response = await authFetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: 'Untitled Note',
-          content: '# New Note\n\nStart writing your thoughts here...',
+          content: '',
           folderId: activeFolderId,
           tags: activeTag ? [activeTag] : [],
         }),
       });
 
-      if (res.ok) {
-        const newNote = await res.json();
-        setNotes((prev) => [newNote, ...prev]);
+      if (response.ok) {
+        const newNote = await response.json();
+        setNotes([newNote, ...notes]);
         setSelectedNote(newNote);
+        setSearchResults(null);
         setActiveMobileView('editor');
         setIsMobileSidebarOpen(false);
-        fetchInitialData();
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        console.error('Failed to create note (status ' + res.status + '):', errData);
       }
-    } catch (e) {
-      console.error('Error creating note:', e);
+    } catch (err) {
+      console.error('Create note failed:', err);
     }
   };
 
-  // Create Folder
+  const updateLocalNote = (updatedNote: any) => {
+    setNotes((prevNotes) =>
+      prevNotes.map((n) => (n.id === updatedNote.id ? { ...n, ...updatedNote } : n))
+    );
+    if (selectedNote?.id === updatedNote.id) {
+      setSelectedNote((prev: any) => ({ ...prev, ...updatedNote }));
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    try {
+      const response = await authFetch(`/api/notes/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        const remaining = notes.filter((n) => n.id !== id);
+        setNotes(remaining);
+        if (selectedNote?.id === id) {
+          setSelectedNote(remaining.length > 0 ? remaining[0] : null);
+        }
+        if (activeMobileView === 'editor') {
+          setActiveMobileView('list');
+        }
+      }
+    } catch (err) {
+      console.error('Delete note failed:', err);
+    }
+  };
+
+  const handleTogglePin = async (note: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await authFetch(`/api/notes/${note.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPinned: !note.isPinned }),
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        updateLocalNote(updated);
+      }
+    } catch (err) {
+      console.error('Toggle pin failed:', err);
+    }
+  };
+
+  const handleToggleArchive = async (note: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await authFetch(`/api/notes/${note.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: !note.isArchived }),
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        updateLocalNote(updated);
+      }
+    } catch (err) {
+      console.error('Toggle archive failed:', err);
+    }
+  };
+
+  // Folder creation
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim()) return;
+
     try {
-      const res = await authFetch('/api/folders', {
+      const response = await authFetch('/api/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newFolderName.trim() }),
       });
-      if (res.ok) {
-        const folder = await res.json();
-        setFolders((prev) => [...prev, folder]);
+
+      if (response.ok) {
+        const createdFolder = await response.json();
+        setFolders([...folders, createdFolder]);
         setNewFolderName('');
         setShowNewFolderModal(false);
-        fetchInitialData();
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        console.error('Failed to create folder (status ' + res.status + '):', errData);
       }
-    } catch (e) {
-      console.error('Error creating folder:', e);
-    }
-  };
-
-  // Toggle Pin
-  const handleTogglePin = async (note: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await authFetch(`/api/notes/${note.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPinned: !note.isPinned }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        updateLocalNote(updated);
-      }
-    } catch (e) {
-      console.error('Error toggling pin:', e);
-    }
-  };
-
-  // Toggle Archive
-  const handleToggleArchive = async (note: any, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const res = await authFetch(`/api/notes/${note.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isArchived: !note.isArchived }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setNotes(notes.filter((n) => n.id !== note.id));
-        if (selectedNote?.id === note.id) {
-          const next = notes.find((n) => n.id !== note.id) || null;
-          setSelectedNote(next);
-          if (!next) setActiveMobileView('list');
-        }
-      }
-    } catch (e) {
-      console.error('Error archiving note:', e);
-    }
-  };
-
-  // Delete Note permanently
-  const handleDeleteNote = async (id: string) => {
-    try {
-      const res = await authFetch(`/api/notes/${id}?permanent=true`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        const remaining = notes.filter((n) => n.id !== id);
-        setNotes(remaining);
-        const next = remaining[0] || null;
-        setSelectedNote(next);
-        if (!next) setActiveMobileView('list');
-      }
-    } catch (e) {
-      console.error('Error deleting note:', e);
-    }
-  };
-
-  const updateLocalNote = (updated: any) => {
-    setNotes(notes.map((n) => (n.id === updated.id ? updated : n)));
-    if (selectedNote?.id === updated.id) {
-      setSelectedNote(updated);
-    }
-  };
-
-  const handleSelectNoteById = (id: string) => {
-    const target = notes.find((n) => n.id === id);
-    if (target) {
-      setSelectedNote(target);
-      setActiveMobileView('editor');
-    } else {
-      authFetch(`/api/notes/${id}`)
-        .then((r) => r.json())
-        .then((n) => {
-          if (n && n.id) {
-            setSelectedNote(n);
-            setNotes((prev) => [n, ...prev]);
-            setActiveMobileView('editor');
-          }
-        });
+    } catch (err) {
+      console.error('Create folder failed:', err);
     }
   };
 
   const handleSelectNoteFromList = (note: any) => {
     setSelectedNote(note);
+    setActiveMobileView('editor');
+  };
+
+  const handleSelectNoteById = (noteId: string) => {
+    const found = notes.find((n) => n.id === noteId);
+    if (found) {
+      setSelectedNote(found);
+    }
     setActiveMobileView('editor');
   };
 
@@ -314,14 +295,14 @@ export default function NotesPage() {
     <div className="flex flex-col h-full justify-between select-none">
       <div>
         {/* Brand Header */}
-        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
-                CEREBRO <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono">AI</span>
+              <h1 className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                CEREBRO <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-mono">AI</span>
               </h1>
               <p className="text-[10px] text-slate-500">Vector Knowledge Base</p>
             </div>
@@ -330,7 +311,7 @@ export default function NotesPage() {
           {/* Close button inside mobile drawer */}
           <button
             onClick={() => setIsMobileSidebarOpen(false)}
-            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white"
+            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
@@ -349,7 +330,7 @@ export default function NotesPage() {
 
         {/* Quick Views */}
         <div className="px-3 py-1.5">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 mb-1.5">
             Workspace
           </p>
           <nav className="flex flex-col gap-1 text-xs">
@@ -364,14 +345,14 @@ export default function NotesPage() {
               }}
               className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all ${
                 !activeFolderId && !activeTag && !showArchived && searchResults === null
-                  ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
-                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                  ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <span className="flex items-center gap-2.5">
-                <BookOpen className="w-4 h-4 text-indigo-400" /> All Notes
+                <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> All Notes
               </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400">
                 {notes.filter((n) => !n.isArchived).length}
               </span>
             </button>
@@ -381,13 +362,13 @@ export default function NotesPage() {
                 setIsAIAskOpen(true);
                 setIsMobileSidebarOpen(false);
               }}
-              className="flex items-center justify-between px-3 py-2 rounded-xl text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 border border-purple-500/20 bg-purple-950/20 transition-all group"
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-200 border border-purple-200 dark:border-purple-500/20 bg-purple-50/50 dark:bg-purple-950/20 transition-all group"
             >
               <span className="flex items-center gap-2.5">
-                <Bot className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform" />
                 Ask Notes (RAG)
               </span>
-              <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+              <Sparkles className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
             </button>
 
             <button
@@ -400,8 +381,8 @@ export default function NotesPage() {
               }}
               className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all ${
                 showArchived
-                  ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
-                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                  ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <span className="flex items-center gap-2.5">
@@ -414,12 +395,12 @@ export default function NotesPage() {
         {/* Folders List */}
         <div className="px-3 py-1.5">
           <div className="flex items-center justify-between px-3 mb-1.5">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
               Folders
             </p>
             <button
               onClick={() => setShowNewFolderModal(true)}
-              className="text-slate-400 hover:text-indigo-400 p-0.5 rounded transition-colors"
+              className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-0.5 rounded transition-colors"
               title="Create Folder"
             >
               <FolderPlus className="w-3.5 h-3.5" />
@@ -438,15 +419,15 @@ export default function NotesPage() {
                 }}
                 className={`flex items-center justify-between px-3 py-1.5 rounded-xl transition-all ${
                   activeFolderId === f.id
-                    ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
-                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                    ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 <span className="flex items-center gap-2 truncate">
-                  <Folder className="w-3.5 h-3.5 text-indigo-400" />
+                  <Folder className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   {f.name}
                 </span>
-                <span className="text-[10px] text-slate-500">{f._count?.notes || 0}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">{f._count?.notes || 0}</span>
               </button>
             ))}
           </div>
@@ -454,7 +435,7 @@ export default function NotesPage() {
 
         {/* Tags List */}
         <div className="px-3 py-1.5">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 mb-1.5">
             Tags
           </p>
           <div className="flex flex-wrap gap-1.5 px-3 max-h-32 overflow-y-auto">
@@ -471,7 +452,7 @@ export default function NotesPage() {
                 className={`px-2 py-0.5 rounded-full text-[11px] border transition-all ${
                   activeTag === t.name
                     ? 'bg-indigo-600 text-white border-indigo-400 font-semibold'
-                    : 'bg-slate-900 border-white/5 text-slate-400 hover:border-slate-600'
+                    : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600'
                 }`}
               >
                 #{t.name}
@@ -483,9 +464,9 @@ export default function NotesPage() {
 
       {/* User Profile & Auth Status */}
       <div>
-        <div className="p-3 border-t border-white/10 bg-slate-950/40">
-          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.03] border border-white/5">
-            <div className="flex items-center gap-2.5 min-w-0">
+        <div className="p-3 border-t border-slate-200 dark:border-white/10 bg-slate-100/60 dark:bg-slate-950/40">
+          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5">
+            <div className="flex items-center gap-2 min-w-0">
               {userAuth?.avatar ? (
                 <img
                   src={userAuth.avatar}
@@ -498,7 +479,7 @@ export default function NotesPage() {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-slate-200 truncate">
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                   {userAuth?.name || 'User'}
                 </p>
                 <p className="text-[10px] text-slate-500 truncate">
@@ -507,23 +488,26 @@ export default function NotesPage() {
               </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all shrink-0"
-              title="Sign Out / Switch Account"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              <ThemeToggle />
+              <button
+                onClick={handleLogout}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 transition-all shrink-0"
+                title="Sign Out / Switch Account"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Footer Info */}
-        <div className="p-3 border-t border-white/10 text-[11px] text-slate-500 flex items-center justify-between">
+        <div className="p-3 border-t border-slate-200 dark:border-white/10 text-[11px] text-slate-500 flex items-center justify-between bg-slate-50 dark:bg-transparent">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-mono text-slate-400 text-[10px]">Qdrant Vector DB</span>
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            <span className="font-mono text-slate-500 dark:text-slate-400 text-[10px]">Qdrant Vector DB</span>
           </div>
-          <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded border border-white/5">
+          <span className="text-[10px] bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-white/5 text-slate-700 dark:text-slate-300">
             Groq Llama 3
           </span>
         </div>
@@ -532,14 +516,14 @@ export default function NotesPage() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-[#070a12] text-slate-100 font-sans">
+    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-slate-50 dark:bg-[#070a12] text-slate-900 dark:text-slate-100 font-sans transition-colors duration-200">
       
       {/* MOBILE TOP BAR (< 768px) */}
-      <header className="md:hidden flex items-center justify-between px-3 py-2.5 bg-[#090d16] border-b border-white/10 shrink-0 z-30">
+      <header className="md:hidden flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[#090d16] border-b border-slate-200 dark:border-white/10 shrink-0 z-30">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
-            className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-white/10"
+            className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10"
             title="Open Menu"
           >
             <Menu className="w-4 h-4" />
@@ -548,11 +532,12 @@ export default function NotesPage() {
             <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
               <Sparkles className="w-3 h-3 text-white" />
             </div>
-            <span className="font-bold text-xs text-white">CEREBRO</span>
+            <span className="font-bold text-xs text-slate-900 dark:text-white">CEREBRO</span>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5">
+          <ThemeToggle />
           <button
             onClick={handleCreateNote}
             className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium shadow-sm"
@@ -563,7 +548,7 @@ export default function NotesPage() {
 
           <button
             onClick={() => setIsAIAskOpen(true)}
-            className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/30 text-purple-300 text-[11px]"
+            className="p-1.5 rounded-xl bg-purple-100 dark:bg-purple-950/60 hover:bg-purple-200 dark:hover:bg-purple-900 border border-purple-300 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-[11px]"
             title="Ask RAG AI"
           >
             <Bot className="w-4 h-4" />
@@ -578,65 +563,65 @@ export default function NotesPage() {
             onClick={() => setIsMobileSidebarOpen(false)}
             className="md:hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-in fade-in"
           />
-          <aside className="md:hidden fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#090d16] border-r border-white/10 shadow-2xl z-50 flex flex-col animate-in slide-in-from-left duration-200">
+          <aside className="md:hidden fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-[#090d16] border-r border-slate-200 dark:border-white/10 shadow-2xl z-50 flex flex-col animate-in slide-in-from-left duration-200">
             {renderSidebarContent()}
           </aside>
         </>
       )}
 
       {/* 1. DESKTOP PERMANENT SIDEBAR (>= 768px) */}
-      <aside className="hidden md:flex w-56 lg:w-64 bg-[#090d16] border-r border-white/10 flex-col justify-between shrink-0 select-none">
+      <aside className="hidden md:flex w-56 lg:w-64 bg-white dark:bg-[#090d16] border-r border-slate-200 dark:border-white/10 flex-col justify-between shrink-0 select-none">
         {renderSidebarContent()}
       </aside>
 
       {/* 2a. DESKTOP COLLAPSED VERTICAL STRIP (when notes overview is collapsed) */}
       {isNotesListCollapsed && (
-        <aside className="hidden md:flex w-10 lg:w-11 bg-[#090d16] border-r border-white/10 flex-col items-center py-3 justify-between shrink-0 select-none">
+        <aside className="hidden md:flex w-10 lg:w-11 bg-white dark:bg-[#090d16] border-r border-slate-200 dark:border-white/10 flex-col items-center py-3 justify-between shrink-0 select-none">
           <button
             onClick={() => setIsNotesListCollapsed(false)}
-            className="p-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition-all hover:scale-105 shadow-md"
+            className="p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-600/20 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/40 transition-all hover:scale-105 shadow-md"
             title="Expand Notes Overview (Ctrl+\)"
           >
-            <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
+            <PanelLeftOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </button>
 
-          <div className="text-[10px] text-slate-500 font-mono rotate-90 whitespace-nowrap tracking-widest uppercase">
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono rotate-90 whitespace-nowrap tracking-widest uppercase">
             Notes ({displayedNotes.length})
           </div>
 
-          <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+          <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-700" />
         </aside>
       )}
 
       {/* 2b. MIDDLE COLUMN: NOTE LIST + SEARCH BAR */}
       <div
-        className={`w-full md:w-80 md:flex-none bg-[#0a0e1a] border-r border-white/10 flex-col shrink-0 transition-all duration-200 h-full ${
+        className={`w-full md:w-80 md:flex-none bg-slate-100/70 dark:bg-[#0a0e1a] border-r border-slate-200 dark:border-white/10 flex-col shrink-0 transition-all duration-200 h-full ${
           activeMobileView === 'list' ? 'flex flex-1 md:flex-none' : 'hidden'
         } ${
           isNotesListCollapsed ? 'md:hidden' : 'md:flex'
         }`}
       >
         {/* Notes Overview Panel Header with Collapse Button */}
-        <div className="px-3.5 py-2 bg-[#090d16] border-b border-white/10 flex items-center justify-between">
+        <div className="px-3.5 py-2 bg-white/80 dark:bg-[#090d16] border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-200 tracking-tight flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-indigo-400" /> Notes Overview
+            <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 tracking-tight flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Notes Overview
             </span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 font-mono">
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400 font-mono">
               {displayedNotes.length}
             </span>
           </div>
 
           <button
             onClick={() => setIsNotesListCollapsed(true)}
-            className="hidden md:flex items-center gap-1 p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="hidden md:flex items-center gap-1 p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
             title="Collapse Notes Panel (Ctrl+\)"
           >
             <PanelLeftClose className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-2.5 sm:p-3 border-b border-white/10 bg-[#090d16]">
+        <div className="p-2.5 sm:p-3 border-b border-slate-200 dark:border-white/10 bg-white/90 dark:bg-[#090d16]">
           <SearchBar
             folders={folders}
             tags={tags}
@@ -654,11 +639,11 @@ export default function NotesPage() {
 
         <div className="flex-1 overflow-y-auto">
           {searchResults !== null && (
-            <div className="px-3 sm:px-4 py-2 bg-indigo-950/30 border-b border-indigo-500/20 text-xs text-indigo-300 flex items-center justify-between">
+            <div className="px-3 sm:px-4 py-2 bg-indigo-50 dark:bg-indigo-950/30 border-b border-indigo-200 dark:border-indigo-500/20 text-xs text-indigo-800 dark:text-indigo-300 flex items-center justify-between">
               <span>Found {searchResults.length} matches</span>
               <button
                 onClick={() => setSearchResults(null)}
-                className="text-indigo-400 hover:underline text-[11px]"
+                className="text-indigo-600 dark:text-indigo-400 hover:underline text-[11px] font-medium"
               >
                 Clear
               </button>
@@ -708,10 +693,10 @@ export default function NotesPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateFolder}
-            className="w-full max-w-sm glass-panel rounded-2xl p-5 border border-white/10 shadow-2xl animate-in zoom-in-95"
+            className="w-full max-w-sm bg-white dark:bg-[#0b0f19] rounded-2xl p-5 border border-slate-200 dark:border-white/10 shadow-2xl animate-in zoom-in-95"
           >
-            <h3 className="font-bold text-slate-100 text-sm mb-2 flex items-center gap-2">
-              <FolderPlus className="w-4 h-4 text-indigo-400" /> New Folder
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm mb-2 flex items-center gap-2">
+              <FolderPlus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> New Folder
             </h3>
             <input
               type="text"
@@ -719,13 +704,13 @@ export default function NotesPage() {
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               placeholder="e.g. Architecture, Roadmap, Projects"
-              className="w-full bg-slate-900 px-3.5 py-2.5 rounded-xl border border-white/10 focus:border-indigo-500 outline-none text-xs text-slate-200 mb-4"
+              className="w-full bg-slate-50 dark:bg-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-xs text-slate-800 dark:text-slate-200 mb-4"
             />
             <div className="flex justify-end gap-2 text-xs">
               <button
                 type="button"
                 onClick={() => setShowNewFolderModal(false)}
-                className="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white"
+                className="px-3.5 py-1.5 rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 Cancel
               </button>

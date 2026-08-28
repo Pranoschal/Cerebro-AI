@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import {
   Sparkles,
@@ -18,7 +19,9 @@ import {
   User,
   Loader2,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,7 +61,6 @@ export default function LoginPage() {
     setIsLoading(true);
     setLoadingType('form');
 
-    // Simulate Auth API call
     setTimeout(() => {
       setIsLoading(false);
       setLoadingType(null);
@@ -68,7 +70,6 @@ export default function LoginPage() {
           : 'Account created successfully! Logging you in...'
       );
       
-      // Store session metadata
       if (typeof window !== 'undefined') {
         localStorage.setItem('cerebro_user_auth', JSON.stringify({
           email,
@@ -115,8 +116,6 @@ export default function LoginPage() {
     }
   };
 
-
-
   // Handle Forgot Password submission
   const handleForgotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,135 +124,147 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-screen bg-[#070a12] text-slate-100 font-sans flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden bg-grid-pattern">
+    <div className="min-h-screen w-screen bg-slate-50 dark:bg-[#070a12] text-slate-900 dark:text-slate-100 font-sans flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden bg-grid-pattern transition-colors duration-200">
+      {/* Top Floating Controls */}
+      <div className="absolute top-4 sm:top-6 left-4 sm:left-6 z-20 flex items-center gap-2">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 shadow-sm"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Back Home
+        </Link>
+      </div>
+
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-6 z-20">
+        <ThemeToggle showLabel />
+      </div>
+
       {/* Dynamic Background Ambient Light Orbs */}
-      <div className="absolute top-1/4 left-1/6 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-float-slow" />
-      <div className="absolute bottom-1/4 right-1/6 w-[30rem] h-[30rem] bg-purple-600/20 rounded-full blur-3xl pointer-events-none animate-float-reverse" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-blue-600/10 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+      <div className="absolute top-1/4 left-1/6 w-96 h-96 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-float-slow" />
+      <div className="absolute bottom-1/4 right-1/6 w-[30rem] h-[30rem] bg-purple-500/10 dark:bg-purple-600/20 rounded-full blur-3xl pointer-events-none animate-float-reverse" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-blue-500/10 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
 
       {/* Main Glassmorphic Container */}
-      <div className="w-full max-w-5xl glass-panel rounded-3xl border border-white/10 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
+      <div className="w-full max-w-5xl rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10 bg-white dark:bg-[#090e1a]/90 backdrop-blur-xl">
         
-        {/* LEFT COLUMN: Hero Brand Showcase (Desktop/Tablet) */}
-        <div className="hidden lg:flex lg:col-span-6 bg-gradient-to-br from-indigo-950/60 via-[#0a0f1d]/80 to-[#070a12]/90 p-8 sm:p-12 flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10 relative overflow-hidden">
-          
+        {/* LEFT COLUMN: Hero Brand Showcase */}
+        <div className="hidden lg:flex lg:col-span-6 bg-slate-100/80 dark:bg-gradient-to-br dark:from-indigo-950/60 dark:via-[#0a0f1d]/80 dark:to-[#070a12]/90 p-8 sm:p-12 flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/10 relative overflow-hidden">
           {/* Subtle Inner Glow Accent */}
           <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
 
           {/* Top Brand Logo */}
           <div>
-            <div className="inline-flex items-center gap-3 bg-white/5 border border-white/10 rounded-full px-4 py-2 backdrop-blur-md mb-8">
+            <div className="inline-flex items-center gap-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2 backdrop-blur-md mb-8 shadow-sm">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
-              <span className="font-extrabold text-sm tracking-wider text-white flex items-center gap-2">
-                CEREBRO <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono border border-indigo-500/30">v2.5 RAG</span>
+              <span className="font-extrabold text-sm tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                CEREBRO <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-mono border border-indigo-200 dark:border-indigo-500/30">v2.5 RAG</span>
               </span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight mb-4">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight mb-4">
               Your Intelligent <br />
-              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
                 Vector Knowledge System
               </span>
             </h1>
 
-            <p className="text-sm text-slate-400 leading-relaxed mb-8">
+            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-8">
               Seamlessly capture ideas, search across semantic vector embeddings with Qdrant, and converse with your notes powered by Groq Llama 3.
             </p>
 
             {/* Feature Cards Grid */}
             <div className="space-y-3.5 mb-8">
-              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 backdrop-blur-sm transition-all hover:bg-white/[0.06] hover:border-indigo-500/30">
-                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 shrink-0">
+              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 backdrop-blur-sm transition-all hover:border-indigo-400 dark:hover:border-indigo-500/30 shadow-sm dark:shadow-none">
+                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
                   <BrainCircuit className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-slate-200">Neural Semantic RAG</h4>
-                  <p className="text-[11px] text-slate-400">Contextual answers generated directly from your saved markdown notes.</p>
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">Neural Semantic RAG</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Contextual answers generated directly from your saved markdown notes.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 backdrop-blur-sm transition-all hover:bg-white/[0.06] hover:border-purple-500/30">
-                <div className="p-2 rounded-xl bg-purple-500/20 text-purple-400 shrink-0">
+              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 backdrop-blur-sm transition-all hover:border-purple-400 dark:hover:border-purple-500/30 shadow-sm dark:shadow-none">
+                <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 shrink-0">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-slate-200">Sub-15ms Latency</h4>
-                  <p className="text-[11px] text-slate-400">Instant similarity search with Voyage AI embeddings & Qdrant.</p>
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">Sub-15ms Latency</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Instant similarity search with Voyage AI embeddings & Qdrant.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 backdrop-blur-sm transition-all hover:bg-white/[0.06] hover:border-emerald-500/30">
-                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+              <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 backdrop-blur-sm transition-all hover:border-emerald-400 dark:hover:border-emerald-500/30 shadow-sm dark:shadow-none">
+                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-semibold text-slate-200">Private & Encrypted</h4>
-                  <p className="text-[11px] text-slate-400">Your notes remain local and secured with client token authentication.</p>
+                  <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">Private & Encrypted</h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Your notes remain local and secured with client token authentication.</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Bottom Live Metrics */}
-          <div className="pt-6 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+          <div className="pt-6 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span>Vector Node Active</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Vector Node Active</span>
             </div>
-            <div className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
-              <Globe className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="flex items-center gap-1.5 font-mono text-[11px]">
+              <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
               <span>Groq Llama-3-70B</span>
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: Interactive Login / Auth Card */}
-        <div className="col-span-1 lg:col-span-6 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-[#090e1a]/90 backdrop-blur-xl relative">
-          
+        <div className="col-span-1 lg:col-span-6 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-white dark:bg-[#090e1a]/90 relative">
           {/* Mobile Top Brand Header */}
           <div className="lg:hidden flex items-center gap-2.5 mb-6 justify-center">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-500/30">
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-extrabold text-sm tracking-wider text-white">
-              CEREBRO <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">AI</span>
+            <span className="font-extrabold text-sm tracking-wider text-slate-900 dark:text-white">
+              CEREBRO <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-mono">AI</span>
             </span>
           </div>
 
           {/* Toast Notification Messages */}
           {errorMessage && (
-            <div className="mb-6 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <div className="mb-6 p-3.5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="mb-6 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="mb-6 p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>{successMessage}</span>
             </div>
           )}
 
           {/* Auth Header */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
               {activeTab === 'signin' ? 'Welcome Back' : 'Create Account'}
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {activeTab === 'signin'
                 ? 'Sign in to access your notes and RAG neural assistant.'
                 : 'Get started with Cerebro AI knowledge base in seconds.'}
             </p>
           </div>
 
-          {/* Auth Tabs (Sign In / Sign Up) */}
-          <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-900/80 border border-white/10 mb-6">
+          {/* Auth Tabs */}
+          <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 mb-6">
             <button
               type="button"
               onClick={() => {
@@ -263,7 +274,7 @@ export default function LoginPage() {
               className={`py-2 text-xs font-semibold rounded-xl transition-all ${
                 activeTab === 'signin'
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               Sign In
@@ -277,7 +288,7 @@ export default function LoginPage() {
               className={`py-2 text-xs font-semibold rounded-xl transition-all ${
                 activeTab === 'signup'
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               Create Account
@@ -289,7 +300,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-white/10 disabled:opacity-60 mb-6 group border border-white/20"
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs transition-all hover:scale-[1.01] active:scale-[0.99] shadow-md border border-slate-200 dark:border-white/20 disabled:opacity-60 mb-6 group"
           >
             {isLoading && loadingType === 'google' ? (
               <Loader2 className="w-4 h-4 animate-spin text-slate-700" />
@@ -322,20 +333,19 @@ export default function LoginPage() {
 
           {/* Divider */}
           <div className="relative flex items-center justify-center mb-6">
-            <div className="border-t border-white/10 w-full" />
-            <span className="bg-[#090e1a] px-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold shrink-0">
+            <div className="border-t border-slate-200 dark:border-white/10 w-full" />
+            <span className="bg-white dark:bg-[#090e1a] px-3 text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold shrink-0">
               Or with email
             </span>
-            <div className="border-t border-white/10 w-full" />
+            <div className="border-t border-slate-200 dark:border-white/10 w-full" />
           </div>
 
           {/* 2. FORM FIELDS */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            
             {/* Full Name field for Sign Up */}
             {activeTab === 'signup' && (
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-slate-300">Full Name</label>
+                <label className="text-[11px] font-medium text-slate-700 dark:text-slate-300">Full Name</label>
                 <div className="relative flex items-center">
                   <User className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
                   <input
@@ -344,7 +354,7 @@ export default function LoginPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. John Doe"
-                    className="w-full bg-slate-900/90 border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all"
+                    className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -352,7 +362,7 @@ export default function LoginPage() {
 
             {/* Email Field */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-slate-300">Email Address</label>
+              <label className="text-[11px] font-medium text-slate-700 dark:text-slate-300">Email Address</label>
               <div className="relative flex items-center">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
                 <input
@@ -361,7 +371,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full bg-slate-900/90 border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all"
+                  className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -369,7 +379,7 @@ export default function LoginPage() {
             {/* Password Field */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-medium text-slate-300">Password</label>
+                <label className="text-[11px] font-medium text-slate-700 dark:text-slate-300">Password</label>
                 {activeTab === 'signin' && (
                   <button
                     type="button"
@@ -377,7 +387,7 @@ export default function LoginPage() {
                       setShowForgotPasswordModal(true);
                       setForgotSubmitted(false);
                     }}
-                    className="text-[11px] text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                    className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline transition-colors font-medium"
                   >
                     Forgot password?
                   </button>
@@ -391,12 +401,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-900/90 border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-100 placeholder-slate-500 outline-none transition-all"
+                  className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 focus:border-indigo-500 rounded-xl py-2.5 pl-10 pr-10 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 text-slate-400 hover:text-slate-200 transition-colors p-1"
+                  className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -411,9 +421,9 @@ export default function LoginPage() {
                   id="remember"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded bg-slate-900 border-white/20 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
+                  className="w-3.5 h-3.5 rounded bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-white/20 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
                 />
-                <label htmlFor="remember" className="text-xs text-slate-400 select-none cursor-pointer">
+                <label htmlFor="remember" className="text-xs text-slate-600 dark:text-slate-400 select-none cursor-pointer">
                   Remember me on this browser
                 </label>
               </div>
@@ -423,7 +433,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-500 hover:to-purple-600 text-white font-medium text-xs shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 pt-3"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-500 hover:to-purple-600 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 pt-3"
             >
               {isLoading && loadingType === 'form' ? (
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
@@ -435,33 +445,30 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-
         </div>
-
       </div>
 
       {/* Forgot Password Modal */}
       {showForgotPasswordModal && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm glass-panel rounded-2xl p-6 border border-white/10 shadow-2xl animate-in zoom-in-95">
-            <h3 className="text-base font-bold text-white mb-2">Reset Password</h3>
-            <p className="text-xs text-slate-400 mb-4">
+          <div className="w-full max-w-sm bg-white dark:bg-[#0b0f19] rounded-2xl p-6 border border-slate-200 dark:border-white/10 shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Reset Password</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
               Enter your account email and we'll send a password recovery link.
             </p>
 
             {forgotSubmitted ? (
               <div className="py-4 text-center space-y-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center border border-emerald-500/30">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center border border-emerald-200 dark:border-emerald-500/30">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
-                <p className="text-xs text-slate-200">
-                  Reset link sent to <span className="font-semibold text-indigo-300">{forgotEmail}</span>!
+                <p className="text-xs text-slate-700 dark:text-slate-200">
+                  Reset link sent to <span className="font-semibold text-indigo-600 dark:text-indigo-300">{forgotEmail}</span>!
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowForgotPasswordModal(false)}
-                  className="w-full py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-medium hover:bg-slate-700"
+                  className="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700"
                 >
                   Close
                 </button>
@@ -474,19 +481,19 @@ export default function LoginPage() {
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                   placeholder="your.email@example.com"
-                  className="w-full bg-slate-900 border border-white/10 rounded-xl p-2.5 text-xs text-slate-100 outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
                 />
                 <div className="flex items-center justify-end gap-2 text-xs">
                   <button
                     type="button"
                     onClick={() => setShowForgotPasswordModal(false)}
-                    className="px-3.5 py-2 text-slate-400 hover:text-white"
+                    className="px-3.5 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-500"
                   >
                     Send Reset Link
                   </button>
