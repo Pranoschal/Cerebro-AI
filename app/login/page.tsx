@@ -134,8 +134,8 @@ export default function LoginPage() {
       {/* Main Glassmorphic Container */}
       <div className="w-full max-w-5xl glass-panel rounded-3xl border border-white/10 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10">
         
-        {/* LEFT COLUMN: Hero Brand Showcase */}
-        <div className="lg:col-span-6 bg-gradient-to-br from-indigo-950/60 via-[#0a0f1d]/80 to-[#070a12]/90 p-8 sm:p-12 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10 relative overflow-hidden">
+        {/* LEFT COLUMN: Hero Brand Showcase (Desktop/Tablet) */}
+        <div className="hidden lg:flex lg:col-span-6 bg-gradient-to-br from-indigo-950/60 via-[#0a0f1d]/80 to-[#070a12]/90 p-8 sm:p-12 flex-col justify-between border-b lg:border-b-0 lg:border-r border-white/10 relative overflow-hidden">
           
           {/* Subtle Inner Glow Accent */}
           <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
@@ -213,7 +213,17 @@ export default function LoginPage() {
         </div>
 
         {/* RIGHT COLUMN: Interactive Login / Auth Card */}
-        <div className="lg:col-span-6 p-8 sm:p-12 flex flex-col justify-center bg-[#090e1a]/90 backdrop-blur-xl relative">
+        <div className="col-span-1 lg:col-span-6 p-6 sm:p-10 md:p-12 flex flex-col justify-center bg-[#090e1a]/90 backdrop-blur-xl relative">
+          
+          {/* Mobile Top Brand Header */}
+          <div className="lg:hidden flex items-center gap-2.5 mb-6 justify-center">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-500/30">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-extrabold text-sm tracking-wider text-white">
+              CEREBRO <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">AI</span>
+            </span>
+          </div>
 
           {/* Toast Notification Messages */}
           {errorMessage && (

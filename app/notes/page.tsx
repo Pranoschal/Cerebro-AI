@@ -19,6 +19,9 @@ import {
   Search,
   LogOut,
   User,
+  Menu,
+  X,
+  ArrowLeft,
 } from 'lucide-react';
 
 import SearchBar from '@/components/SearchBar';
@@ -46,19 +49,21 @@ export default function NotesPage() {
   const [isAIAskOpen, setIsAIAskOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Responsive Mobile View State
+  const [activeMobileView, setActiveMobileView] = useState<'list' | 'editor'>('list');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   // New folder dialog
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
   // Initial Fetch & Auth sync with Supabase
   useEffect(() => {
-    // 1. Check existing local storage
     const stored = getStoredUser();
     if (stored) {
       setUserAuth(stored);
     }
 
-    // 2. Sync with Supabase session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const u = session.user;
@@ -163,7 +168,9 @@ export default function NotesPage() {
         const newNote = await res.json();
         setNotes([newNote, ...notes]);
         setSelectedNote(newNote);
-        fetchInitialData(); // Refresh tags/folders counters
+        setActiveMobileView('editor');
+        setIsMobileSidebarOpen(false);
+        fetchInitialData();
       }
     } catch (e) {
       console.error('Error creating note:', e);
@@ -222,7 +229,9 @@ export default function NotesPage() {
         const updated = await res.json();
         setNotes(notes.filter((n) => n.id !== note.id));
         if (selectedNote?.id === note.id) {
-          setSelectedNote(notes.find((n) => n.id !== note.id) || null);
+          const next = notes.find((n) => n.id !== note.id) || null;
+          setSelectedNote(next);
+          if (!next) setActiveMobileView('list');
         }
       }
     } catch (e) {
@@ -239,7 +248,9 @@ export default function NotesPage() {
       if (res.ok) {
         const remaining = notes.filter((n) => n.id !== id);
         setNotes(remaining);
-        setSelectedNote(remaining[0] || null);
+        const next = remaining[0] || null;
+        setSelectedNote(next);
+        if (!next) setActiveMobileView('list');
       }
     } catch (e) {
       console.error('Error deleting note:', e);
@@ -253,22 +264,27 @@ export default function NotesPage() {
     }
   };
 
-  // Select note by ID (used by citations in RAG drawer)
   const handleSelectNoteById = (id: string) => {
     const target = notes.find((n) => n.id === id);
     if (target) {
       setSelectedNote(target);
+      setActiveMobileView('editor');
     } else {
-      // Fetch directly if not in current list
       authFetch(`/api/notes/${id}`)
         .then((r) => r.json())
         .then((n) => {
           if (n && n.id) {
             setSelectedNote(n);
             setNotes((prev) => [n, ...prev]);
+            setActiveMobileView('editor');
           }
         });
     }
+  };
+
+  const handleSelectNoteFromList = (note: any) => {
+    setSelectedNote(note);
+    setActiveMobileView('editor');
   };
 
   // Filter notes displayed in sidebar
@@ -280,161 +296,180 @@ export default function NotesPage() {
     return true;
   });
 
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#070a12] text-slate-100 font-sans">
-      {/* 1. Leftmost Navigation Rail */}
-      <aside className="w-64 bg-[#090d16] border-r border-white/10 flex flex-col justify-between shrink-0 select-none">
-        <div>
-          {/* Brand Header */}
-          <div className="p-5 border-b border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h1 className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
-                  CEREBRO <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono">AI</span>
-                </h1>
-                <p className="text-[10px] text-slate-500">Vector Knowledge Base</p>
-              </div>
+  // Reusable Sidebar Content
+  const renderSidebarContent = () => (
+    <div className="flex flex-col h-full justify-between select-none">
+      <div>
+        {/* Brand Header */}
+        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h1 className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5">
+                CEREBRO <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono">AI</span>
+              </h1>
+              <p className="text-[10px] text-slate-500">Vector Knowledge Base</p>
             </div>
           </div>
 
-          {/* Action: New Note */}
-          <div className="p-4">
+          {/* Close button inside mobile drawer */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Action: New Note */}
+        <div className="p-3 sm:p-4">
+          <button
+            onClick={handleCreateNote}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-medium text-xs shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <Plus className="w-4 h-4" />
+            Create New Note
+          </button>
+        </div>
+
+        {/* Quick Views */}
+        <div className="px-3 py-1.5">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
+            Workspace
+          </p>
+          <nav className="flex flex-col gap-1 text-xs">
             <button
-              onClick={handleCreateNote}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-medium text-xs shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              onClick={() => {
+                setActiveFolderId(null);
+                setActiveTag(null);
+                setShowArchived(false);
+                setSearchResults(null);
+                setIsMobileSidebarOpen(false);
+                setActiveMobileView('list');
+              }}
+              className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all ${
+                !activeFolderId && !activeTag && !showArchived && searchResults === null
+                  ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
+                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              Create New Note
+              <span className="flex items-center gap-2.5">
+                <BookOpen className="w-4 h-4 text-indigo-400" /> All Notes
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                {notes.filter((n) => !n.isArchived).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsAIAskOpen(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              className="flex items-center justify-between px-3 py-2 rounded-xl text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 border border-purple-500/20 bg-purple-950/20 transition-all group"
+            >
+              <span className="flex items-center gap-2.5">
+                <Bot className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                Ask Notes (RAG)
+              </span>
+              <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+            </button>
+
+            <button
+              onClick={() => {
+                setShowArchived(true);
+                setActiveFolderId(null);
+                setActiveTag(null);
+                setIsMobileSidebarOpen(false);
+                setActiveMobileView('list');
+              }}
+              className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all ${
+                showArchived
+                  ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
+                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                <Archive className="w-4 h-4" /> Archive
+              </span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Folders List */}
+        <div className="px-3 py-1.5">
+          <div className="flex items-center justify-between px-3 mb-1.5">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Folders
+            </p>
+            <button
+              onClick={() => setShowNewFolderModal(true)}
+              className="text-slate-400 hover:text-indigo-400 p-0.5 rounded transition-colors"
+              title="Create Folder"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          {/* Quick Views */}
-          <div className="px-3 py-2">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
-              Workspace
-            </p>
-            <nav className="flex flex-col gap-1 text-xs">
+          <div className="flex flex-col gap-0.5 text-xs max-h-36 overflow-y-auto">
+            {folders.map((f) => (
               <button
+                key={f.id}
                 onClick={() => {
-                  setActiveFolderId(null);
+                  setActiveFolderId(f.id);
                   setActiveTag(null);
                   setShowArchived(false);
-                  setSearchResults(null);
+                  setIsMobileSidebarOpen(false);
+                  setActiveMobileView('list');
                 }}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all ${
-                  !activeFolderId && !activeTag && !showArchived && searchResults === null
+                className={`flex items-center justify-between px-3 py-1.5 rounded-xl transition-all ${
+                  activeFolderId === f.id
                     ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
-                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                 }`}
               >
-                <span className="flex items-center gap-2.5">
-                  <BookOpen className="w-4 h-4 text-indigo-400" /> All Notes
+                <span className="flex items-center gap-2 truncate">
+                  <Folder className="w-3.5 h-3.5 text-indigo-400" />
+                  {f.name}
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
-                  {notes.filter((n) => !n.isArchived).length}
-                </span>
+                <span className="text-[10px] text-slate-500">{f._count?.notes || 0}</span>
               </button>
-
-              <button
-                onClick={() => setIsAIAskOpen(true)}
-                className="flex items-center justify-between px-3 py-2 rounded-xl text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 border border-purple-500/20 bg-purple-950/20 transition-all group"
-              >
-                <span className="flex items-center gap-2.5">
-                  <Bot className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
-                  Ask Notes (RAG)
-                </span>
-                <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowArchived(true);
-                  setActiveFolderId(null);
-                  setActiveTag(null);
-                }}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl transition-all ${
-                  showArchived
-                    ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
-                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <Archive className="w-4 h-4" /> Archive
-                </span>
-              </button>
-            </nav>
-          </div>
-
-          {/* Folders List */}
-          <div className="px-3 py-2">
-            <div className="flex items-center justify-between px-3 mb-1.5">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                Folders
-              </p>
-              <button
-                onClick={() => setShowNewFolderModal(true)}
-                className="text-slate-400 hover:text-indigo-400 p-0.5 rounded transition-colors"
-                title="Create Folder"
-              >
-                <FolderPlus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-0.5 text-xs max-h-40 overflow-y-auto">
-              {folders.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => {
-                    setActiveFolderId(f.id);
-                    setActiveTag(null);
-                    setShowArchived(false);
-                  }}
-                  className={`flex items-center justify-between px-3 py-1.5 rounded-xl transition-all ${
-                    activeFolderId === f.id
-                      ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
-                  }`}
-                >
-                  <span className="flex items-center gap-2 truncate">
-                    <Folder className="w-3.5 h-3.5 text-indigo-400" />
-                    {f.name}
-                  </span>
-                  <span className="text-[10px] text-slate-500">{f._count?.notes || 0}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tags List */}
-          <div className="px-3 py-2">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
-              Tags
-            </p>
-            <div className="flex flex-wrap gap-1.5 px-3 max-h-36 overflow-y-auto">
-              {tags.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => {
-                    setActiveTag(activeTag === t.name ? null : t.name);
-                    setActiveFolderId(null);
-                    setShowArchived(false);
-                  }}
-                  className={`px-2 py-0.5 rounded-full text-[11px] border transition-all ${
-                    activeTag === t.name
-                      ? 'bg-indigo-600 text-white border-indigo-400 font-semibold'
-                      : 'bg-slate-900 border-white/5 text-slate-400 hover:border-slate-600'
-                  }`}
-                >
-                  #{t.name}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* User Profile & Auth Status */}
+        {/* Tags List */}
+        <div className="px-3 py-1.5">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-1.5">
+            Tags
+          </p>
+          <div className="flex flex-wrap gap-1.5 px-3 max-h-32 overflow-y-auto">
+            {tags.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setActiveTag(activeTag === t.name ? null : t.name);
+                  setActiveFolderId(null);
+                  setShowArchived(false);
+                  setIsMobileSidebarOpen(false);
+                  setActiveMobileView('list');
+                }}
+                className={`px-2 py-0.5 rounded-full text-[11px] border transition-all ${
+                  activeTag === t.name
+                    ? 'bg-indigo-600 text-white border-indigo-400 font-semibold'
+                    : 'bg-slate-900 border-white/5 text-slate-400 hover:border-slate-600'
+                }`}
+              >
+                #{t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* User Profile & Auth Status */}
+      <div>
         <div className="p-3 border-t border-white/10 bg-slate-950/40">
           <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/[0.03] border border-white/5">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -470,7 +505,7 @@ export default function NotesPage() {
         </div>
 
         {/* Footer Info */}
-        <div className="p-3.5 border-t border-white/10 text-[11px] text-slate-500 flex items-center justify-between">
+        <div className="p-3 border-t border-white/10 text-[11px] text-slate-500 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             <span className="font-mono text-slate-400 text-[10px]">Qdrant Vector DB</span>
@@ -479,11 +514,75 @@ export default function NotesPage() {
             Groq Llama 3
           </span>
         </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden bg-[#070a12] text-slate-100 font-sans">
+      
+      {/* MOBILE TOP BAR (< 768px) */}
+      <header className="md:hidden flex items-center justify-between px-3 py-2.5 bg-[#090d16] border-b border-white/10 shrink-0 z-30">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-white/10"
+            title="Open Menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+              <Sparkles className="w-3 h-3 text-white" />
+            </div>
+            <span className="font-bold text-xs text-white">CEREBRO</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleCreateNote}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-medium shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New</span>
+          </button>
+
+          <button
+            onClick={() => setIsAIAskOpen(true)}
+            className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900 border border-purple-500/30 text-purple-300 text-[11px]"
+            title="Ask RAG AI"
+          >
+            <Bot className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* MOBILE SLIDE-OVER SIDEBAR DRAWER (< 768px) */}
+      {isMobileSidebarOpen && (
+        <>
+          <div
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-in fade-in"
+          />
+          <aside className="md:hidden fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#090d16] border-r border-white/10 shadow-2xl z-50 flex flex-col animate-in slide-in-from-left duration-200">
+            {renderSidebarContent()}
+          </aside>
+        </>
+      )}
+
+      {/* 1. DESKTOP PERMANENT SIDEBAR (>= 768px) */}
+      <aside className="hidden md:flex w-56 lg:w-64 bg-[#090d16] border-r border-white/10 flex-col justify-between shrink-0 select-none">
+        {renderSidebarContent()}
       </aside>
 
-      {/* 2. Middle Column: Note List + Search Bar */}
-      <div className="w-96 bg-[#0a0e1a] border-r border-white/10 flex flex-col shrink-0">
-        <div className="p-3 border-b border-white/10 bg-[#090d16]">
+      {/* 2. MIDDLE COLUMN: NOTE LIST + SEARCH BAR */}
+      <div
+        className={`w-full md:w-80 lg:w-96 bg-[#0a0e1a] border-r border-white/10 flex-col shrink-0 ${
+          activeMobileView === 'list' ? 'flex flex-1 md:flex-initial h-full' : 'hidden md:flex'
+        }`}
+      >
+        <div className="p-2.5 sm:p-3 border-b border-white/10 bg-[#090d16]">
           <SearchBar
             folders={folders}
             tags={tags}
@@ -501,13 +600,13 @@ export default function NotesPage() {
 
         <div className="flex-1 overflow-y-auto">
           {searchResults !== null && (
-            <div className="px-4 py-2 bg-indigo-950/30 border-b border-indigo-500/20 text-xs text-indigo-300 flex items-center justify-between">
-              <span>Found {searchResults.length} search matches</span>
+            <div className="px-3 sm:px-4 py-2 bg-indigo-950/30 border-b border-indigo-500/20 text-xs text-indigo-300 flex items-center justify-between">
+              <span>Found {searchResults.length} matches</span>
               <button
                 onClick={() => setSearchResults(null)}
                 className="text-indigo-400 hover:underline text-[11px]"
               >
-                Clear Search
+                Clear
               </button>
             </div>
           )}
@@ -515,7 +614,7 @@ export default function NotesPage() {
           <NoteList
             notes={displayedNotes}
             selectedNoteId={selectedNote?.id || null}
-            onSelectNote={(n) => setSelectedNote(n)}
+            onSelectNote={handleSelectNoteFromList}
             onTogglePin={handleTogglePin}
             onToggleArchive={handleToggleArchive}
             isLoading={isLoading}
@@ -523,18 +622,23 @@ export default function NotesPage() {
         </div>
       </div>
 
-      {/* 3. Right Pane: Note Editor & Split Markdown */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
+      {/* 3. RIGHT PANE: NOTE EDITOR */}
+      <main
+        className={`flex-1 flex-col overflow-hidden relative ${
+          activeMobileView === 'editor' ? 'flex h-full' : 'hidden md:flex'
+        }`}
+      >
         <NoteEditor
           note={selectedNote}
           folders={folders}
           availableTags={tags}
           onUpdateNote={updateLocalNote}
           onDeleteNote={handleDeleteNote}
+          onBack={() => setActiveMobileView('list')}
         />
       </main>
 
-      {/* 4. AI Ask RAG Side Panel Drawer */}
+      {/* 4. AI ASK RAG SIDE PANEL DRAWER */}
       <AIAskPanel
         isOpen={isAIAskOpen}
         onClose={() => setIsAIAskOpen(false)}
