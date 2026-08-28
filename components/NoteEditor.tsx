@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   Sparkles,
@@ -17,6 +17,7 @@ import {
   Trash2,
   Share2,
   ArrowLeft,
+  Save,
 } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
 
@@ -59,6 +60,7 @@ export default function NoteEditor({
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('edit');
   
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'synced'>('saved');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isSuggestingTags, setIsSuggestingTags] = useState(false);
 
@@ -79,51 +81,81 @@ export default function NoteEditor({
   useEffect(() => {
     if (note) {
       initialLoadRef.current = true;
-      setTitle(note.title);
+      setTitle(note.title || '');
       setContent(note.content || '');
       setSummary(note.summary || null);
       setFolderId(note.folderId || null);
       setTags(note.tags ? note.tags.map((t) => t.name) : []);
       setSaveStatus('saved');
+      setHasUnsavedChanges(false);
+      setTimeout(() => {
+        initialLoadRef.current = false;
+      }, 50);
     }
   }, [note?.id]);
 
-  // Debounced Autosave (1000ms delay)
-  useEffect(() => {
-    if (!note) return;
-    if (initialLoadRef.current) {
-      initialLoadRef.current = false;
-      return;
-    }
+  // Track unsaved changes when user types or changes metadata
+  const handleTitleChange = (val: string) => {
+    setTitle(val);
+    if (!initialLoadRef.current) setHasUnsavedChanges(true);
+  };
 
+  const handleContentChange = (val: string) => {
+    setContent(val);
+    if (!initialLoadRef.current) setHasUnsavedChanges(true);
+  };
+
+  const handleFolderChange = (val: string | null) => {
+    setFolderId(val);
+    if (!initialLoadRef.current) setHasUnsavedChanges(true);
+  };
+
+  // Manual Save Function
+  const handleSaveNote = useCallback(async () => {
+    if (!note || saveStatus === 'saving') return;
     setSaveStatus('saving');
-    const timer = setTimeout(async () => {
-      try {
-        const res = await authFetch(`/api/notes/${note.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title,
-            content,
-            summary,
-            folderId,
-            tags,
-          }),
-        });
 
-        if (res.ok) {
-          const updated = await res.json();
-          onUpdateNote(updated);
-          setSaveStatus('synced');
-          setTimeout(() => setSaveStatus('saved'), 2000);
-        }
-      } catch (err) {
-        console.error('Autosave failed:', err);
+    try {
+      const res = await authFetch(`/api/notes/${note.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          content,
+          summary,
+          folderId,
+          tags,
+        }),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        onUpdateNote(updated);
+        setSaveStatus('synced');
+        setHasUnsavedChanges(false);
+        setTimeout(() => setSaveStatus('saved'), 2000);
+      } else {
+        console.error('Failed to save note');
+        setSaveStatus('saved');
       }
-    }, 1000);
+    } catch (err) {
+      console.error('Save failed:', err);
+      setSaveStatus('saved');
+    }
+  }, [note, title, content, summary, folderId, tags, saveStatus, onUpdateNote]);
 
-    return () => clearTimeout(timer);
-  }, [title, content, summary, folderId, tags]);
+  // Keyboard shortcut: Ctrl+S / Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSaveNote();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleSaveNote]);
 
   // AI Summarize Action
   const handleSummarize = async () => {
@@ -138,6 +170,7 @@ export default function NoteEditor({
       if (res.ok) {
         const data = await res.json();
         setSummary(data.summary);
+        setHasUnsavedChanges(true);
         if (data.note) onUpdateNote(data.note);
       }
     } catch (e) {
@@ -162,6 +195,7 @@ export default function NoteEditor({
         if (Array.isArray(data.tags)) {
           const merged = Array.from(new Set([...tags, ...data.tags]));
           setTags(merged);
+          setHasUnsavedChanges(true);
         }
       }
     } catch (e) {
@@ -177,6 +211,7 @@ export default function NoteEditor({
       const clean = tagInput.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
       if (clean && !tags.includes(clean)) {
         setTags([...tags, clean]);
+        setHasUnsavedChanges(true);
       }
       setTagInput('');
     }
@@ -184,6 +219,7 @@ export default function NoteEditor({
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter((t) => t !== tagToRemove));
+    setHasUnsavedChanges(true);
   };
 
   if (!note) {
@@ -204,7 +240,7 @@ export default function NoteEditor({
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#090d16]/80 backdrop-blur-md">
       {/* Top Header & AI Toolbar */}
       <div className="px-3 sm:px-6 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2.5 glass-panel">
-        {/* Left: Mobile Back Button & Status Indicators */}
+        {/* Left: Mobile Back Button & Save Action / Status */}
         <div className="flex items-center gap-2 flex-wrap">
           {onBack && (
             <button
@@ -217,36 +253,44 @@ export default function NoteEditor({
             </button>
           )}
 
-          <span
-            className={`flex items-center gap-1 text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full font-mono transition-colors ${
-              saveStatus === 'saving'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                : saveStatus === 'synced'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                : 'bg-slate-800 text-slate-400 border border-white/5'
+          {/* EXPLICIT SAVE BUTTON */}
+          <button
+            onClick={handleSaveNote}
+            disabled={saveStatus === 'saving'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all ${
+              hasUnsavedChanges
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-600/30 scale-105'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10'
             }`}
+            title="Save note (Ctrl+S)"
           >
             {saveStatus === 'saving' ? (
               <>
-                <RotateCw className="w-3 h-3 animate-spin" /> <span className="hidden sm:inline">Saving...</span>
+                <RotateCw className="w-3.5 h-3.5 animate-spin text-white" />
+                <span>Saving...</span>
               </>
             ) : saveStatus === 'synced' ? (
               <>
-                <Check className="w-3 h-3" /> <span className="hidden sm:inline">Vector Synced</span>
+                <Check className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Saved!</span>
               </>
             ) : (
               <>
-                <Check className="w-3 h-3 text-slate-500" /> <span className="hidden sm:inline">Saved</span>
+                <Save className={`w-3.5 h-3.5 ${hasUnsavedChanges ? 'text-white' : 'text-slate-400'}`} />
+                <span>{hasUnsavedChanges ? 'Save Note' : 'Save'}</span>
+                {hasUnsavedChanges && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />
+                )}
               </>
             )}
-          </span>
+          </button>
 
           {/* Folder Dropdown */}
           <div className="flex items-center gap-1.5 bg-slate-900/80 px-2 sm:px-2.5 py-1 rounded-xl border border-white/5 text-[11px] sm:text-xs text-slate-300 max-w-[130px] sm:max-w-none">
             <Folder className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
             <select
               value={folderId || ''}
-              onChange={(e) => setFolderId(e.target.value || null)}
+              onChange={(e) => handleFolderChange(e.target.value || null)}
               className="bg-transparent border-none outline-none text-slate-200 cursor-pointer truncate text-[11px] sm:text-xs"
             >
               <option value="" className="bg-slate-900 text-slate-400">
@@ -331,7 +375,7 @@ export default function NoteEditor({
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="Untitled Note..."
           className="w-full bg-transparent border-none outline-none text-xl sm:text-2xl md:text-3xl font-extrabold text-white placeholder-slate-600 tracking-tight"
         />
@@ -373,7 +417,10 @@ export default function NoteEditor({
                 <Sparkles className="w-4 h-4 text-indigo-400" /> AI Executive Summary
               </span>
               <button
-                onClick={() => setSummary(null)}
+                onClick={() => {
+                  setSummary(null);
+                  setHasUnsavedChanges(true);
+                }}
                 className="text-slate-400 hover:text-white transition-colors"
                 title="Dismiss summary"
               >
@@ -392,7 +439,7 @@ export default function NoteEditor({
           <div className={`flex-1 flex flex-col h-full ${viewMode === 'split' ? 'lg:w-1/2' : 'w-full'}`}>
             <textarea
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(e) => handleContentChange(e.target.value)}
               placeholder="Write your thoughts in Markdown (e.g. # Architecture, - Points, `code`)..."
               className="w-full h-full bg-slate-950/40 p-3.5 sm:p-4 rounded-2xl border border-white/5 focus:border-indigo-500/50 outline-none text-slate-200 placeholder-slate-600 font-mono text-xs sm:text-sm leading-relaxed resize-none transition-all shadow-inner"
             />
