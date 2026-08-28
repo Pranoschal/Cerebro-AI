@@ -589,15 +589,34 @@ export default function NotesPage() {
         {renderSidebarContent()}
       </aside>
 
-      {/* 2. MIDDLE COLUMN: NOTE LIST + SEARCH BAR */}
+      {/* 2a. DESKTOP COLLAPSED VERTICAL STRIP (when notes overview is collapsed) */}
+      {isNotesListCollapsed && (
+        <aside className="hidden md:flex w-10 lg:w-11 bg-[#090d16] border-r border-white/10 flex-col items-center py-3 justify-between shrink-0 select-none">
+          <button
+            onClick={() => setIsNotesListCollapsed(false)}
+            className="p-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 transition-all hover:scale-105 shadow-md"
+            title="Expand Notes Overview (Ctrl+\)"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
+          </button>
+
+          <div className="text-[10px] text-slate-500 font-mono rotate-90 whitespace-nowrap tracking-widest uppercase">
+            Notes ({displayedNotes.length})
+          </div>
+
+          <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
+        </aside>
+      )}
+
+      {/* 2b. MIDDLE COLUMN: NOTE LIST + SEARCH BAR */}
       <div
-        className={`w-full md:w-80 lg:w-96 bg-[#0a0e1a] border-r border-white/10 flex-col shrink-0 transition-all duration-200 ${
-          activeMobileView === 'list'
-            ? 'flex flex-1 md:flex-initial h-full'
-            : isNotesListCollapsed
+        className={`${
+          isNotesListCollapsed
             ? 'hidden'
-            : 'hidden md:flex'
-        }`}
+            : activeMobileView === 'list'
+            ? 'flex flex-1 md:flex-initial w-full md:w-80 lg:w-96'
+            : 'hidden md:flex md:w-80 lg:w-96'
+        } bg-[#0a0e1a] border-r border-white/10 flex-col shrink-0 transition-all duration-200 h-full`}
       >
         {/* Notes Overview Panel Header with Collapse Button */}
         <div className="px-3.5 py-2 bg-[#090d16] border-b border-white/10 flex items-center justify-between">

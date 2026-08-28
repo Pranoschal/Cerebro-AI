@@ -354,29 +354,8 @@ export default function NoteEditor({
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#090d16]/80 backdrop-blur-md">
       {/* Top Header & AI Toolbar */}
       <div className="px-3 sm:px-6 py-2.5 border-b border-white/10 flex flex-wrap items-center justify-between gap-2.5 glass-panel relative z-30">
-        {/* Left: Collapse Toggle, Mobile Back & Save Action / Status */}
+        {/* Left: Mobile Back & Save Action / Status */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Desktop/Tablet Collapse Notes List Button */}
-          {onToggleNotesListCollapse && (
-            <button
-              onClick={onToggleNotesListCollapse}
-              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                isNotesListCollapsed
-                  ? 'bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 shadow-sm'
-                  : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/10'
-              }`}
-              title={isNotesListCollapsed ? "Expand Notes Overview (Ctrl+\\)" : "Collapse Notes Overview (Ctrl+\\)"}
-            >
-              {isNotesListCollapsed ? (
-                <>
-                  <PanelLeftOpen className="w-4 h-4 text-indigo-400" />
-                  <span className="text-[11px]">Show Notes</span>
-                </>
-              ) : (
-                <PanelLeftClose className="w-4 h-4 text-slate-400" />
-              )}
-            </button>
-          )}
 
           {/* Mobile Back Button */}
           {onBack && (
