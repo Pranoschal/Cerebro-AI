@@ -20,6 +20,7 @@ import {
   Save,
 } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
+import ModelSelector from './ModelSelector';
 
 interface Note {
   id: string;
@@ -59,6 +60,13 @@ export default function NoteEditor({
   const [tagInput, setTagInput] = useState('');
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('edit');
   
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cerebro_selected_model') || 'llama-3.3-70b-versatile';
+    }
+    return 'llama-3.3-70b-versatile';
+  });
+
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'synced'>('saved');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -165,7 +173,7 @@ export default function NoteEditor({
       const res = await authFetch('/api/ai/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ noteId: note.id }),
+        body: JSON.stringify({ noteId: note.id, model: selectedModel }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -188,7 +196,7 @@ export default function NoteEditor({
       const res = await authFetch('/api/ai/tag-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ noteId: note.id }),
+        body: JSON.stringify({ noteId: note.id, model: selectedModel }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -277,7 +285,7 @@ export default function NoteEditor({
             ) : (
               <>
                 <Save className={`w-3.5 h-3.5 ${hasUnsavedChanges ? 'text-white' : 'text-slate-400'}`} />
-                <span>{hasUnsavedChanges ? 'Save Note' : 'Save'}</span>
+                <span>{hasUnsavedChanges ? 'Save Note' : 'Saved'}</span>
                 {hasUnsavedChanges && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />
                 )}
@@ -305,13 +313,16 @@ export default function NoteEditor({
           </div>
         </div>
 
-        {/* Right: AI Triggers & View Toggle */}
+        {/* Right: AI Model Selector, AI Triggers & View Toggle */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          {/* Dynamic AI Model Selector */}
+          <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+
           <button
             onClick={handleSummarize}
             disabled={isSummarizing}
             className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[11px] sm:text-xs font-semibold shadow-sm transition-all"
-            title="Generate AI summary via Groq Llama 3"
+            title="Generate AI summary"
           >
             <Sparkles className={`w-3.5 h-3.5 ${isSummarizing ? 'animate-spin' : 'text-indigo-400'}`} />
             <span className="hidden sm:inline">{isSummarizing ? 'Summarizing...' : 'AI Summary'}</span>
@@ -441,7 +452,7 @@ export default function NoteEditor({
               value={content}
               onChange={(e) => handleContentChange(e.target.value)}
               placeholder="Write your thoughts in Markdown (e.g. # Architecture, - Points, `code`)..."
-              className="w-full h-full bg-slate-950/40 p-3.5 sm:p-4 rounded-2xl border border-white/5 focus:border-indigo-500/50 outline-none text-slate-200 placeholder-slate-600 font-mono text-xs sm:text-sm leading-relaxed resize-none transition-all shadow-inner"
+              className="w-full h-full bg-slate-950/40 p-4 sm:p-5 rounded-2xl border border-white/5 focus:border-indigo-500/50 outline-none text-slate-200 placeholder-slate-600 font-mono text-xs sm:text-sm leading-relaxed resize-none transition-all shadow-inner"
             />
           </div>
         )}
@@ -449,7 +460,7 @@ export default function NoteEditor({
         {/* Markdown Live Preview */}
         {(viewMode === 'split' || viewMode === 'preview') && (
           <div
-            className={`flex-1 flex flex-col h-full bg-slate-950/20 p-4 sm:p-5 rounded-2xl border border-white/5 overflow-y-auto ${
+            className={`flex-1 flex flex-col h-full bg-slate-950/20 p-4 sm:p-6 rounded-2xl border border-white/5 overflow-y-auto ${
               viewMode === 'split' ? 'lg:w-1/2' : 'w-full'
             }`}
           >

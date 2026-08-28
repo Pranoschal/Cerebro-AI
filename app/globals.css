@@ -61,81 +61,112 @@ body {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* Markdown render styling inside note preview */
+/* Markdown render styling inside note preview with spacious, breathable hierarchy */
 .markdown-body {
   color: #cbd5e1;
-  line-height: 1.7;
+  line-height: 1.8;
+  font-size: 0.95rem;
 }
 
 .markdown-body h1 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #f8fafc;
-  margin-top: 1.2rem;
-  margin-bottom: 0.8rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.3rem;
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.markdown-body h1:first-child {
+  margin-top: 0;
 }
 
 .markdown-body h2 {
   font-size: 1.4rem;
-  font-weight: 600;
-  color: #f1f5f9;
-  margin-top: 1rem;
-  margin-bottom: 0.6rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-top: 1.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.5rem;
+  line-height: 1.35;
 }
 
 .markdown-body h3 {
   font-size: 1.15rem;
   font-weight: 600;
   color: #e2e8f0;
-  margin-top: 0.8rem;
-  margin-bottom: 0.4rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
 }
 
 .markdown-body p {
-  margin-bottom: 0.8rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.8;
+  color: #cbd5e1;
 }
 
 .markdown-body ul, .markdown-body ol {
   margin-left: 1.5rem;
-  margin-bottom: 0.8rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .markdown-body li {
   list-style-type: disc;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.7;
 }
 
 .markdown-body code {
-  background: rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  background: rgba(99, 102, 241, 0.18);
+  color: #c7d2fe;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
   font-size: 0.88em;
-  font-family: monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
 .markdown-body pre {
-  background: #0b0f19;
+  background: #070b14;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: 12px;
+  padding: 1.25rem;
   overflow-x: auto;
-  margin-bottom: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .markdown-body pre code {
   background: transparent;
   padding: 0;
+  border: none;
+  color: #e2e8f0;
 }
 
 .markdown-body blockquote {
   border-left: 3px solid #6366f1;
-  padding-left: 1rem;
+  padding-left: 1.25rem;
   color: #94a3b8;
   font-style: italic;
-  margin: 1rem 0;
+  margin: 1.25rem 0;
+  background: rgba(99, 102, 241, 0.05);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-radius: 0 8px 8px 0;
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 1.75rem 0;
 }
 
 /* Custom background patterns and ambient orb animations */
@@ -192,4 +223,3 @@ body {
   border-color: rgba(99, 102, 241, 0.8);
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.25), inset 0 0 10px rgba(99, 102, 241, 0.1);
 }
-

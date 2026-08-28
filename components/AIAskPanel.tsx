@@ -14,6 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
+import ModelSelector from './ModelSelector';
 
 interface Citation {
   index: number;
@@ -49,6 +50,12 @@ export default function AIAskPanel({
   const [question, setQuestion] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cerebro_selected_model') || 'llama-3.3-70b-versatile';
+    }
+    return 'llama-3.3-70b-versatile';
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -83,6 +90,7 @@ export default function AIAskPanel({
           folderId: selectedFolderId,
           tags: selectedTag ? [selectedTag] : [],
         },
+        model: selectedModel,
       };
 
       let res: Response;
@@ -144,25 +152,28 @@ export default function AIAskPanel({
       {/* Drawer Container */}
       <div className="fixed inset-y-0 right-0 w-full sm:w-[480px] max-w-full bg-[#0b0f19] border-l border-white/10 shadow-2xl z-50 flex flex-col backdrop-blur-xl animate-in slide-in-from-right duration-300">
         {/* Drawer Header */}
-        <div className="px-4 sm:px-5 py-3.5 border-b border-white/10 flex items-center justify-between bg-indigo-950/20">
-          <div className="flex items-center gap-2.5">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-white/10 flex items-center justify-between bg-indigo-950/20 gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/30 shrink-0">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <h3 className="font-bold text-sm text-slate-100 flex items-center gap-1.5">
-                Ask Your Notes <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">RAG</span>
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm text-slate-100 flex items-center gap-1.5 truncate">
+                Ask Notes <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">RAG</span>
               </h3>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">Powered by Voyage Embeddings & Groq</p>
+              <p className="text-[10px] text-slate-400 truncate">Qdrant Vector + Groq Engine</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="Close Assistant"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} />
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Close Assistant"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Scope Scroller */}

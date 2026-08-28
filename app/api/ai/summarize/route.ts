@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { noteId } = body;
+    const { noteId, model } = body;
 
     if (!noteId) {
       return NextResponse.json({ error: 'noteId is required' }, { status: 400 });
@@ -25,17 +25,20 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = `Title: ${note.title}\n\nContent:\n${note.content}`;
-    const summary = await callGroqChat([
-      {
-        role: 'system',
-        content:
-          'You are an expert AI summarizer. Provide a concise, high-impact bulleted summary of key takeaways and actionable items from the provided markdown note. Keep it under 100 words. Format clearly.',
-      },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ]);
+    const summary = await callGroqChat(
+      [
+        {
+          role: 'system',
+          content:
+            'You are an expert AI summarizer. Provide a concise, high-impact bulleted summary of key takeaways and actionable items from the provided markdown note. Keep it under 100 words. Format clearly.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      { model }
+    );
 
     const updatedNote = await prisma.note.update({
       where: { id: noteId },

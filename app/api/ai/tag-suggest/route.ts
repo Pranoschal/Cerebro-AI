@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { noteId } = body;
+    const { noteId, model } = body;
 
     if (!noteId) {
       return NextResponse.json({ error: 'noteId is required' }, { status: 400 });
@@ -31,14 +31,14 @@ export async function POST(req: NextRequest) {
         {
           role: 'system',
           content:
-            'Analyze the following note and generate 3 to 5 relevant, concise single-word or hyphenated category tags. Respond in JSON format: { "tags": ["tag1", "tag2", "tag3"] }',
+            'You are an AI metadata assistant. Analyze the note and return a JSON object with an array of 3 to 6 concise, lowercase, single-word or hyphenated relevant tags. Example response format: {"tags": ["architecture", "nextjs", "qdrant", "database"]}',
         },
         {
           role: 'user',
           content: prompt,
         },
       ],
-      { jsonMode: true }
+      { model, jsonMode: true }
     );
 
     let parsedTags: string[] = [];

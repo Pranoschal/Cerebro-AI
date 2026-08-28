@@ -19,7 +19,7 @@ async function handleAskRAG(req: NextRequest) {
       // Empty
     }
 
-    const { question = '', scope = {} } = body;
+    const { question = '', scope = {}, model } = body;
     const { folderId, tags = [] } = scope;
 
     if (!question.trim()) {
@@ -81,10 +81,13 @@ Guidelines:
 
     const userPrompt = `Context Notes:\n${contextBlocks || 'No notes found in scope.'}\n\nUser Question: "${question}"`;
 
-    const answer = await callGroqChat([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ]);
+    const answer = await callGroqChat(
+      [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      { model }
+    );
 
     const citations = sourceNotes.map((n, idx) => ({
       index: idx + 1,
@@ -99,7 +102,7 @@ Guidelines:
       answer,
       citations,
       question,
-      modelUsed: 'Groq Llama 3 (RAG)',
+      modelUsed: model || 'Llama 3.3 (70B)',
     });
   } catch (error: any) {
     console.error('Ask RAG error:', error);
