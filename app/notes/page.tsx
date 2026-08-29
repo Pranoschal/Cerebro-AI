@@ -516,30 +516,30 @@ export default function NotesPage() {
                   <span className="truncate">{f.name}</span>
                 </span>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 group-hover:hidden">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden md:block group-hover:hidden">
                     {f._count?.notes || 0}
                   </span>
-                  <div className="hidden group-hover:flex items-center gap-1">
+                  <div className="flex md:hidden group-hover:flex items-center gap-1">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingFolder(f);
                         setEditFolderName(f.name);
                       }}
-                      className="p-1 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                      className="p-1.5 md:p-1 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors"
                       title="Rename Folder"
                     >
-                      <Pencil className="w-3 h-3" />
+                      <Pencil className="w-3.5 h-3.5 md:w-3 md:h-3" />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeletingFolder(f);
                       }}
-                      className="p-1 rounded text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors"
+                      className="p-1.5 md:p-1 rounded text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors"
                       title="Delete Folder"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5 md:w-3 md:h-3" />
                     </button>
                   </div>
                 </div>
