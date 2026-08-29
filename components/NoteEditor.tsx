@@ -490,28 +490,34 @@ export default function NoteEditor({
 
                 {/* Custom Instruction Box */}
                 <div className="mt-2 pt-2 border-t border-slate-200 dark:border-white/10">
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mb-1">Custom AI prompt:</div>
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/90 rounded-xl p-1 border border-slate-200 dark:border-white/10 focus-within:border-purple-500/60">
-                    <input
-                      type="text"
+                  <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 mb-1">Custom AI prompt:</div>
+                  <div className="flex flex-col gap-1.5 bg-slate-50 dark:bg-slate-900/90 rounded-xl p-2 border border-slate-200 dark:border-white/10 focus-within:border-purple-500/60 transition-all">
+                    <textarea
+                      rows={3}
                       value={customCopilotPrompt}
                       onChange={(e) => setCustomCopilotPrompt(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && customCopilotPrompt.trim()) {
+                        if (e.key === 'Enter' && !e.shiftKey && customCopilotPrompt.trim()) {
                           e.preventDefault();
                           handleAICopilotAction('custom', customCopilotPrompt);
                         }
                       }}
-                      placeholder="e.g. Add TypeScript code example..."
-                      className="bg-transparent border-none outline-none text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 flex-1 px-1.5 py-0.5"
+                      placeholder="e.g. Write me a note on RAG and RAG Systems..."
+                      className="bg-transparent border-none outline-none text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 w-full resize-none leading-relaxed"
                     />
-                    <button
-                      onClick={() => handleAICopilotAction('custom', customCopilotPrompt)}
-                      disabled={!customCopilotPrompt.trim()}
-                      className="p-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:hover:bg-purple-600 shrink-0"
-                    >
-                      <Send className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60 dark:border-white/5">
+                      <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                        Enter to send (Shift+Enter for newline)
+                      </span>
+                      <button
+                        onClick={() => handleAICopilotAction('custom', customCopilotPrompt)}
+                        disabled={!customCopilotPrompt.trim()}
+                        className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40 disabled:hover:bg-purple-600 shrink-0 text-[10px] font-semibold flex items-center gap-1 transition-all"
+                      >
+                        <span>Generate</span>
+                        <Send className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
