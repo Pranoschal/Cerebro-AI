@@ -139,14 +139,24 @@ export default function NotesPage() {
 
       if (foldersRes.ok) {
         const foldersData = await foldersRes.json();
-        setFolders(Array.isArray(foldersData) ? foldersData : []);
+        const folderList = Array.isArray(foldersData)
+          ? foldersData
+          : Array.isArray(foldersData?.folders)
+          ? foldersData.folders
+          : [];
+        setFolders(folderList);
       } else {
         setFolders([]);
       }
 
       if (tagsRes.ok) {
         const tagsData = await tagsRes.json();
-        setTags(Array.isArray(tagsData) ? tagsData : []);
+        const tagList = Array.isArray(tagsData)
+          ? tagsData
+          : Array.isArray(tagsData?.tags)
+          ? tagsData.tags
+          : [];
+        setTags(tagList);
       } else {
         setTags([]);
       }
