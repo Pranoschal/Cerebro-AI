@@ -123,14 +123,15 @@ export default function NotesPage() {
 
       if (notesRes.ok) {
         const notesData = await notesRes.json();
-        if (Array.isArray(notesData)) {
-          setNotes(notesData);
-          if (notesData.length > 0 && !selectedNote) {
-            const firstUnarchived = notesData.find((n: any) => !n.isArchived) || notesData[0];
-            setSelectedNote(firstUnarchived);
-          }
-        } else {
-          setNotes([]);
+        const list = Array.isArray(notesData)
+          ? notesData
+          : Array.isArray(notesData?.notes)
+          ? notesData.notes
+          : [];
+        setNotes(list);
+        if (list.length > 0 && !selectedNote) {
+          const firstUnarchived = list.find((n: any) => !n.isArchived) || list[0];
+          setSelectedNote(firstUnarchived);
         }
       } else {
         setNotes([]);
