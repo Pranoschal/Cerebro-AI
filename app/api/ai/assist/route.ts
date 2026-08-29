@@ -40,9 +40,9 @@ export async function POST(req: NextRequest) {
 
       case 'custom':
         systemPrompt =
-          'You are an intelligent AI note copilot. Write, expand, or execute the user request directly in clean, comprehensive markdown format. Output only the body content of the note without introductory metadata, quotes, or system prefixes.';
-        userPrompt = `User Request: "${prompt || 'Write note content'}"${title ? `\nNote Title: "${title}"` : ''}${
-          noteContent ? `\nExisting Context:\n${noteContent}` : ''
+          'You are an intelligent AI note copilot. If existing note content is provided, work directly on it—refactoring, polishing, expanding, and integrating the user request into a complete, cohesive markdown note. Output only the final markdown body of the note without introductory filler, conversational metadata, or system prefixes.';
+        userPrompt = `User Request: "${prompt || 'Write note content'}"\nNote Title: "${title}"${
+          noteContent ? `\n\nExisting Note Content to refine and build upon:\n${noteContent}` : ''
         }`;
         break;
 

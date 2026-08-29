@@ -72,8 +72,10 @@ function simulateAIFallback(
   ) {
     const rawTopic = userInstruction.replace(/^Write\s*(?:me\s*)?(?:a\s*)?(?:note\s*)?(?:on\s*)?/i, '').trim();
     const topic = rawTopic || 'Requested Topic';
-    
-    return `## Overview of ${topic}
+    const existingContentMatch = lastUserMsg.match(/Existing Note Content[^\n]*:\n([\s\S]+)/i);
+    const existingContent = existingContentMatch ? existingContentMatch[1].trim() : '';
+
+    const newSection = `## Overview of ${topic}
 
 ### Core Concepts & Architecture
 - **Definition**: ${topic} provides a structured framework for data retrieval, knowledge synthesis, and intelligent automation.
@@ -88,6 +90,8 @@ function simulateAIFallback(
 - [x] Implement debounced auto-syncing for note embeddings
 - [x] Configure fast vector similarity search index
 - [ ] Monitor retrieval latency and model token usage`;
+
+    return existingContent ? `${existingContent}\n\n${newSection}` : newSection;
   }
 
   // 4. Default RAG / Q&A response

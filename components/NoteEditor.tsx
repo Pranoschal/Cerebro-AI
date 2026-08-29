@@ -210,7 +210,7 @@ export default function NoteEditor({
         const data = await response.json();
         if (data.result) {
           let nextContent = content;
-          if (action === 'polish') {
+          if (action === 'polish' || action === 'custom') {
             nextContent = data.result;
           } else {
             nextContent = content.trim() ? `${content.trim()}\n\n${data.result}` : data.result;
