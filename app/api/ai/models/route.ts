@@ -29,12 +29,12 @@ const FALLBACK_MODELS: AIModel[] = [
     description: 'Sub-100ms lightning responses for quick Q&A',
   },
   {
-    id: 'qwen/qwen3.6-27b',
-    name: 'Qwen 3.6 (27B)',
-    developer: 'Alibaba',
-    context_window: 32768,
-    badge: 'Coding & Markdown',
-    description: 'Strong structured synthesis and coding capabilities',
+    id: 'llama-3.3-70b-versatile',
+    name: 'Llama 3.3 (70B Versatile)',
+    developer: 'Meta',
+    context_window: 131072,
+    badge: 'Recommended',
+    description: 'High intelligence & structured synthesis for complex notes',
   },
   {
     id: 'mixtral-8x7b-32768',

@@ -5,7 +5,9 @@ export async function callGroqChat(
   options: { model?: string; temperature?: number; max_tokens?: number; jsonMode?: boolean } = {}
 ): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
-  const model = options.model || 'qwen/qwen3.6-27b';
+  const model = options.model && !options.model.includes('qwen3.6')
+    ? options.model
+    : 'llama-3.3-70b-versatile';
 
   if (apiKey && apiKey.trim() !== '') {
     try {
@@ -45,6 +47,9 @@ function simulateAIFallback(
   const lastUserMsg = messages[messages.length - 1]?.content || '';
   const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
 
+  // Extract user instruction / topic from prompt if structured
+  const userInstruction = lastUserMsg.match(/User (?:Request|Instruction):\s*"?([^"\n]+)"?/i)?.[1] || lastUserMsg;
+
   // 1. Summarization request
   if (systemMsg.includes('summarize') || lastUserMsg.includes('Summarize')) {
     const lines = lastUserMsg.split('\n').filter((l) => l.trim().length > 0);
@@ -58,6 +63,41 @@ function simulateAIFallback(
     return JSON.stringify({ tags: defaultTags.slice(0, 4) });
   }
 
-  // 3. RAG Q&A
-  return `Based on your indexed notes, here is the synthesis for "${lastUserMsg.slice(0, 60)}":\n\nYour notes emphasize systematic architecture, vector indexing with Qdrant, and debounced auto-syncing. References to note context demonstrate seamless RAG capabilities.\n\n*Sources: Notes in your current workspace.*`;
+  // 3. Custom writing / Copilot note generation request
+  if (
+    systemMsg.includes('copilot') ||
+    systemMsg.includes('co-writer') ||
+    systemMsg.includes('editor') ||
+    userInstruction.toLowerCase().includes('write')
+  ) {
+    const rawTopic = userInstruction.replace(/^Write\s*(?:me\s*)?(?:a\s*)?(?:note\s*)?(?:on\s*)?/i, '').trim();
+    const topic = rawTopic || 'Requested Topic';
+    
+    return `## Overview of ${topic}
+
+### Core Concepts & Architecture
+- **Definition**: ${topic} provides a structured framework for data retrieval, knowledge synthesis, and intelligent automation.
+- **Key Objectives**: Improve contextual accuracy, reduce latency, and enable scalable information access across workspaces.
+
+### System Workflow
+1. **Ingestion & Indexing**: Incoming notes and documents are chunked and converted into high-dimensional vector embeddings.
+2. **Vector Retrieval**: Semantic similarity search matches queries against indexed embeddings using vector database collections.
+3. **Contextual Generation**: Retrieved context is augmented into the LLM prompt to generate grounded, precise responses.
+
+### Implementation Best Practices
+- [x] Implement debounced auto-syncing for note embeddings
+- [x] Configure fast vector similarity search index
+- [ ] Monitor retrieval latency and model token usage`;
+  }
+
+  // 4. Default RAG / Q&A response
+  const cleanTitle = userInstruction.split('\n')[0].replace(/^Note Title:\s*"?/, '').replace(/"?$/, '');
+  return `### Information Synthesis for ${cleanTitle}
+
+Based on your workspace notes, here is the synthesis:
+
+1. **Systematic Architecture**: Notes emphasize structured vector indexing and debounced sync pipelines.
+2. **Contextual RAG Search**: Real-time vector similarity queries retrieve relevant context prior to generation.
+
+*Sources: Notes in your current workspace.*`;
 }

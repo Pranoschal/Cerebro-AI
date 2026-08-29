@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
     await ensureUser(userId, email, name);
 
     const body = await req.json();
-    const { action = 'continue', title = '', content = '', prompt = '', model } = body;
+    const { action = 'continue', title = '', content = '', currentContent = '', prompt = '', model } = body;
+    const noteContent = content || currentContent || '';
 
     let systemPrompt = '';
     let userPrompt = '';
@@ -22,30 +23,32 @@ export async function POST(req: NextRequest) {
       case 'continue':
         systemPrompt =
           'You are an expert AI co-writer and thought partner. Seamlessly continue and expand upon the user note in markdown. Maintain the existing tone, style, and formatting. Do not repeat the existing content; only output the new continuation text.';
-        userPrompt = `Note Title: "${title}"\n\nCurrent Note Content:\n${content}\n\nPlease continue writing the next section or thoughts:`;
+        userPrompt = `Note Title: "${title}"\n\nCurrent Note Content:\n${noteContent}\n\nPlease continue writing the next section or thoughts:`;
         break;
 
       case 'outline':
         systemPrompt =
           'You are a strategic brainstorming and outlining assistant. Generate a structured, highly actionable markdown outline or list of key concepts, questions, and action items that would fit into this note.';
-        userPrompt = `Note Title: "${title}"\n\nCurrent Content:\n${content || 'Empty note'}\n\nBrainstorm a structured markdown outline with bullet points:`;
+        userPrompt = `Note Title: "${title}"\n\nCurrent Content:\n${noteContent || 'Empty note'}\n\nBrainstorm a structured markdown outline with bullet points:`;
         break;
 
       case 'polish':
         systemPrompt =
           'You are a professional editor. Polish, refine, and improve the clarity and flow of the provided note while preserving all technical accuracy, markdown formatting, and core ideas. Return the polished version.';
-        userPrompt = `Note Title: "${title}"\n\nContent to Polish:\n${content}`;
+        userPrompt = `Note Title: "${title}"\n\nContent to Polish:\n${noteContent}`;
         break;
 
       case 'custom':
         systemPrompt =
-          'You are an intelligent AI note copilot. Execute the user request specifically in the context of their note and format the response in clean, beautiful markdown.';
-        userPrompt = `Note Title: "${title}"\n\nCurrent Content:\n${content}\n\nUser Request: "${prompt}"`;
+          'You are an intelligent AI note copilot. Write, expand, or execute the user request directly in clean, comprehensive markdown format. Output only the body content of the note without introductory metadata, quotes, or system prefixes.';
+        userPrompt = `User Request: "${prompt || 'Write note content'}"${title ? `\nNote Title: "${title}"` : ''}${
+          noteContent ? `\nExisting Context:\n${noteContent}` : ''
+        }`;
         break;
 
       default:
         systemPrompt = 'You are a helpful AI writing assistant. Enhance the note in clean markdown.';
-        userPrompt = `Title: ${title}\nContent:\n${content}`;
+        userPrompt = `Title: ${title}\nContent:\n${noteContent}`;
     }
 
     const generatedText = await callGroqChat(
