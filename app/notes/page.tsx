@@ -230,7 +230,7 @@ export default function NotesPage() {
     e.stopPropagation();
     try {
       const response = await authFetch(`/api/notes/${note.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPinned: !note.isPinned }),
       });
@@ -247,7 +247,7 @@ export default function NotesPage() {
     e.stopPropagation();
     try {
       const response = await authFetch(`/api/notes/${note.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isArchived: !note.isArchived }),
       });

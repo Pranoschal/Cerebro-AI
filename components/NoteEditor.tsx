@@ -153,7 +153,7 @@ export default function NoteEditor({
 
     try {
       const response = await authFetch(`/api/notes/${note.id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
