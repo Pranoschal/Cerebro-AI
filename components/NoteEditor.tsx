@@ -427,7 +427,12 @@ export default function NoteEditor({
             </button>
 
             {isCopilotOpen && (
-              <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 w-72 sm:w-80 max-w-[calc(100vw-2rem)] rounded-2xl bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-white/20 shadow-2xl p-2.5 z-[100] animate-in fade-in slide-in-from-top-1 text-xs">
+              <>
+                <div
+                  className="fixed inset-0 z-[90] sm:hidden bg-black/40 backdrop-blur-xs"
+                  onClick={() => setIsCopilotOpen(false)}
+                />
+                <div className="fixed left-1/2 top-20 -translate-x-1/2 w-[calc(100vw-2rem)] max-w-sm sm:absolute sm:left-auto sm:right-0 sm:top-full sm:translate-x-0 sm:w-80 sm:mt-2 rounded-2xl bg-white dark:bg-[#0b0f19] border border-slate-200 dark:border-white/20 shadow-2xl p-3 z-[100] animate-in fade-in slide-in-from-top-2 text-xs">
                 <div className="px-1 py-1 text-[10px] font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/10 flex items-center justify-between mb-1.5">
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" /> In-Note AI Copilot
@@ -521,6 +526,7 @@ export default function NoteEditor({
                   </div>
                 </div>
               </div>
+              </>
             )}
           </div>
 
