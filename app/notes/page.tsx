@@ -517,7 +517,7 @@ export default function NotesPage() {
                 </span>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden md:block group-hover:hidden">
-                    {f._count?.notes || 0}
+                    {notes.filter((n) => n.folderId === f.id && !n.isArchived).length}
                   </span>
                   <div className="flex md:hidden group-hover:flex items-center gap-1">
                     <button
