@@ -416,14 +416,14 @@ export default function NoteEditor({
               disabled={isCopilotGenerating}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-sm transition-all border ${
                 isCopilotGenerating
-                  ? 'bg-purple-100 dark:bg-purple-600/30 border-purple-400 dark:border-purple-500/50 text-purple-700 dark:text-purple-200 animate-pulse'
-                  : 'bg-purple-50 dark:bg-gradient-to-r dark:from-indigo-600/30 dark:to-purple-600/30 hover:bg-purple-100 dark:hover:from-indigo-600/40 dark:hover:to-purple-600/40 text-purple-700 dark:text-purple-200 border-purple-200 dark:border-purple-500/40'
+                  ? 'bg-purple-100 dark:bg-purple-950/80 border-purple-400 dark:border-purple-500 text-purple-800 dark:text-purple-200 animate-pulse'
+                  : 'bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/30'
               }`}
               title="AI Writing Assistant (Ctrl+J)"
             >
               <Wand2 className={`w-3.5 h-3.5 ${isCopilotGenerating ? 'animate-spin text-purple-600 dark:text-purple-300' : 'text-purple-600 dark:text-purple-400'}`} />
               <span className="hidden sm:inline">{isCopilotGenerating ? 'Writing...' : 'AI Assist'}</span>
-              <ChevronDown className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+              <ChevronDown className="w-3 h-3 text-purple-500 dark:text-purple-400" />
             </button>
 
             {isCopilotOpen && (
