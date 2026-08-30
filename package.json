@@ -11,8 +11,13 @@
     "prisma:db-push": "prisma db push"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^4.0.35",
     "@prisma/client": "^5.19.1",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-toast": "^1.2.23",
     "@supabase/supabase-js": "^2.112.4",
+    "ai": "^7.0.85",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.439.0",
     "next": "^14.2.10",
@@ -20,7 +25,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
-    "tailwind-merge": "^2.5.2"
+    "tailwind-merge": "^2.5.2",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^20",

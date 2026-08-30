@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callGroqChat } from '@/lib/ai';
+import { resolveGroqModelId } from '@/lib/groq-models';
 import { ensureUser } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -21,15 +22,29 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case 'continue':
-        systemPrompt =
-          'You are an expert AI co-writer. Continue and expand upon the existing note content seamlessly in markdown. Synthesize existing concepts and extend them with detailed explanations, technical context, and relevant next steps. Return the complete updated note content.';
-        userPrompt = `Note Title: "${title}"\n\nCurrent Note Content:\n${noteContent || '(Empty note)'}\n\nPlease expand and continue writing this note:`;
+        if (noteContent.trim()) {
+          systemPrompt =
+            'You are an expert AI co-writer. The user already has note content. Write ONLY the next markdown content that continues naturally from where the note ends. Follow the topic in the existing body — ignore the note title if it does not match the content. Do NOT repeat, rewrite, paraphrase, or reproduce any existing text. Do NOT return the full note. Output only new paragraphs, sections, bullet points, or code blocks. No meta-commentary or conversational filler.';
+          userPrompt = `Existing note:\n${noteContent}\n\nWrite the next continuation:`;
+        } else {
+          systemPrompt =
+            'You are an expert AI co-writer. Write the opening markdown content for a new note. The title is a hint only. Output only the note body — no title line, no meta-commentary, no conversational intro.';
+          userPrompt = `Write opening content for a note${title ? ` about "${title}"` : ''}:`;
+        }
         break;
 
       case 'outline':
         systemPrompt =
-          'You are a strategic note architect. Analyze the existing note content and transform or extend it into a clean, well-structured, highly readable markdown outline with clear section headers, key takeaways, and action items.';
-        userPrompt = `Note Title: "${title}"\n\nCurrent Content:\n${noteContent || '(Empty note)'}\n\nGenerate a structured markdown outline incorporating existing ideas and new insights:`;
+          'You are a strategic note architect. Create a clean markdown outline with section headers that best fit the content. ' +
+          'Choose sections dynamically based on what the note actually contains — only include "Key Takeaways" if there are meaningful insights to extract, and only include "Action Items" if the note implies tasks, decisions, or next steps. ' +
+          'Do not force either section if it does not naturally apply; a simple list, reference, or log-style note may need neither. ' +
+          'When the note already has content, output ONLY a new outline section to add below it — do NOT reproduce, rewrite, or remove the existing note text. ' +
+          'Do NOT repeat the original prose as paragraphs. Use headers and bullet points only. ' +
+          'The user request and note body define the subject — the note title field may be outdated, so ignore it when it conflicts with the actual topic. ' +
+          'Output ONLY the outline markdown. No meta-commentary, no "Note Context" sections, no explanations about restructuring, and do not mention unrelated topics (e.g. RAG) unless the user content is about that topic.';
+        userPrompt = noteContent.trim()
+          ? `The note below will be kept as-is. Create a separate outline section that organizes its ideas.\n\nExisting note:\n${noteContent}\n\nOutput only the outline section (not the original text):`
+          : `Create a structured outline for a note titled "${title || 'Untitled'}".\n\nGenerate the outline:`;
         break;
 
       case 'polish':
@@ -40,10 +55,10 @@ export async function POST(req: NextRequest) {
 
       case 'custom':
         systemPrompt =
-          'You are an expert AI note-taking assistant and editor. Your task is to modify, rewrite, expand, or refactor the existing note content according to the user request. DO NOT simply append text to the end. Integrate the requested changes smoothly directly into the existing text, maintaining clean markdown formatting, proper headings, bullet points, and code blocks where appropriate. Do not include chat intro/outro, conversational filler, or system prefixes. Output ONLY the updated, complete markdown note content.';
-        userPrompt = `User Request: "${prompt || 'Enhance and expand note content'}"\nNote Title: "${title}"${
-          noteContent ? `\n\nExisting Note Content to work on:\n${noteContent}` : ''
-        }`;
+          'You are an expert AI note-taking assistant. Follow the user request as the primary instruction — it defines the topic. The note title field is just an app label and may be wrong or outdated; never let a mismatched title override the user request. Write or edit the note content in clean markdown. Do NOT output meta-commentary (no "Note Context", no "Executive Summary" about the note itself, no explanations of what you are doing). Do not mention RAG, vector search, or this app unless the user explicitly asks about those. Output ONLY the final markdown note content.';
+        userPrompt = noteContent.trim()
+          ? `User Request: "${prompt || 'Enhance and expand note content'}"\n\nExisting note content:\n${noteContent}\n\nApply the request and return the updated note:`
+          : `User Request: "${prompt || 'Write useful note content'}"\n\nThe note body is empty. Write the note content for this request. Do not use the app note title unless it matches the request.${title ? ` (App label: "${title}" — ignore if unrelated)` : ''}`;
         break;
 
       default:
@@ -51,18 +66,20 @@ export async function POST(req: NextRequest) {
         userPrompt = `Title: ${title}\nContent:\n${noteContent}`;
     }
 
+    const modelUsed = await resolveGroqModelId(model);
+
     const generatedText = await callGroqChat(
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      { model, temperature: 0.5, max_tokens: 3000 }
+      { model: modelUsed, temperature: 0.5, max_tokens: 3000 }
     );
 
     return NextResponse.json({
       result: generatedText,
       action,
-      modelUsed: model || 'llama-3.3-70b-versatile',
+      modelUsed,
     });
   } catch (err: any) {
     console.error('AI Assist error:', err);

@@ -15,6 +15,8 @@ import {
 import ReactMarkdown from 'react-markdown';
 import ModelSelector from '@/components/ModelSelector';
 import { authFetch } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/lib/api-errors';
+import { showErrorToast } from '@/lib/toast-notifications';
 
 interface Citation {
   id: string;
@@ -59,21 +61,17 @@ export default function AIAskPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
-
-  // Load saved model from local storage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('cerebro_selected_model');
-      if (saved) setSelectedModel(saved);
-    }
-  }, []);
+  const [selectedModel, setSelectedModel] = useState<string>('');
 
   if (!isOpen) return null;
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || isLoading) return;
+    if (!selectedModel) {
+      showErrorToast('Ask Notes unavailable', 'Select a Groq model before asking a question.');
+      return;
+    }
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -107,38 +105,24 @@ export default function AIAskPanel({
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: data.answer,
-          citations: data.sources?.map((s: any, idx: number) => ({
+          citations: data.citations?.map((s: any, idx: number) => ({
             id: s.id,
             title: s.title,
             snippet: s.snippet,
-            index: idx + 1,
+            index: s.index ?? idx + 1,
           })),
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, botMsg]);
       } else {
-        const err = await response.json();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: `I encountered an error querying your knowledge base: ${err.error || 'Request failed'}`,
-            timestamp: new Date(),
-          },
-        ]);
+        showErrorToast(
+          'Ask Notes failed',
+          await getApiErrorMessage(response, 'Could not query your knowledge base.')
+        );
       }
     } catch (err: any) {
       console.error('RAG query failed:', err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `Unable to connect to the knowledge engine: ${err.message}`,
-          timestamp: new Date(),
-        },
-      ]);
+      showErrorToast('Ask Notes failed', err?.message || 'Unable to connect to the knowledge engine.');
     } finally {
       setIsLoading(false);
     }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getEmbedding } from '@/lib/embeddings';
 import { searchVectors } from '@/lib/qdrant';
 import { callGroqChat } from '@/lib/ai';
+import { resolveGroqModelId } from '@/lib/groq-models';
 
 // Core RAG logic: Retrieve top-K relevant notes via vector embeddings and synthesize answer with citations
 async function handleAskRAG(req: NextRequest) {
@@ -81,12 +82,14 @@ Guidelines:
 
     const userPrompt = `Context Notes:\n${contextBlocks || 'No notes found in scope.'}\n\nUser Question: "${question}"`;
 
+    const modelUsed = await resolveGroqModelId(model);
+
     const answer = await callGroqChat(
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      { model }
+      { model: modelUsed }
     );
 
     const citations = sourceNotes.map((n, idx) => ({
@@ -102,7 +105,7 @@ Guidelines:
       answer,
       citations,
       question,
-      modelUsed: model || 'Llama 3.3 (70B)',
+      modelUsed,
     });
   } catch (error: any) {
     console.error('Ask RAG error:', error);

@@ -36,6 +36,8 @@ import AIAskPanel from '@/components/AIAskPanel';
 import ThemeToggle from '@/components/ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { authFetch, getStoredUser, AuthUser } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/lib/api-errors';
+import { showErrorToast } from '@/lib/toast-notifications';
 
 export default function NotesPage() {
   const router = useRouter();
@@ -142,6 +144,7 @@ export default function NotesPage() {
         }
       } else {
         setNotes([]);
+        showErrorToast('Failed to load notes', await getApiErrorMessage(notesRes, 'Could not load your notes.'));
       }
 
       if (foldersRes.ok) {
@@ -154,6 +157,7 @@ export default function NotesPage() {
         setFolders(folderList);
       } else {
         setFolders([]);
+        showErrorToast('Failed to load folders', await getApiErrorMessage(foldersRes, 'Could not load folders.'));
       }
 
       if (tagsRes.ok) {
@@ -166,12 +170,14 @@ export default function NotesPage() {
         setTags(tagList);
       } else {
         setTags([]);
+        showErrorToast('Failed to load tags', await getApiErrorMessage(tagsRes, 'Could not load tags.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Initial data fetch error:', err);
       setNotes([]);
       setFolders([]);
       setTags([]);
+      showErrorToast('Failed to load workspace', err?.message || 'Could not load your notes workspace.');
     } finally {
       setIsLoading(false);
     }
@@ -185,8 +191,9 @@ export default function NotesPage() {
         localStorage.removeItem('cerebro_user_auth');
       }
       router.push('/login');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Logout error:', err);
+      showErrorToast('Sign out failed', err?.message || 'Could not sign out.');
     }
   };
 
@@ -211,9 +218,12 @@ export default function NotesPage() {
         setSearchResults(null);
         setActiveMobileView('editor');
         setIsMobileSidebarOpen(false);
+      } else {
+        showErrorToast('Create note failed', await getApiErrorMessage(response, 'Could not create a new note.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create note failed:', err);
+      showErrorToast('Create note failed', err?.message || 'Network error while creating note.');
     }
   };
 
@@ -238,9 +248,12 @@ export default function NotesPage() {
         if (activeMobileView === 'editor') {
           setActiveMobileView('list');
         }
+      } else {
+        showErrorToast('Delete note failed', await getApiErrorMessage(response, 'Could not delete this note.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete note failed:', err);
+      showErrorToast('Delete note failed', err?.message || 'Network error while deleting note.');
     }
   };
 
@@ -255,9 +268,12 @@ export default function NotesPage() {
       if (response.ok) {
         const updated = await response.json();
         updateLocalNote(updated);
+      } else {
+        showErrorToast('Update note failed', await getApiErrorMessage(response, 'Could not update pin status.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Toggle pin failed:', err);
+      showErrorToast('Update note failed', err?.message || 'Network error while updating note.');
     }
   };
 
@@ -272,9 +288,12 @@ export default function NotesPage() {
       if (response.ok) {
         const updated = await response.json();
         updateLocalNote(updated);
+      } else {
+        showErrorToast('Update note failed', await getApiErrorMessage(response, 'Could not update archive status.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Toggle archive failed:', err);
+      showErrorToast('Update note failed', err?.message || 'Network error while updating note.');
     }
   };
 
@@ -295,9 +314,12 @@ export default function NotesPage() {
         setFolders([...folders, createdFolder]);
         setNewFolderName('');
         setShowNewFolderModal(false);
+      } else {
+        showErrorToast('Create folder failed', await getApiErrorMessage(response, 'Could not create folder.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create folder failed:', err);
+      showErrorToast('Create folder failed', err?.message || 'Network error while creating folder.');
     }
   };
 
@@ -318,9 +340,12 @@ export default function NotesPage() {
         setFolders(folders.map((f) => (f.id === updated.id ? { ...f, name: updated.name } : f)));
         setEditingFolder(null);
         setEditFolderName('');
+      } else {
+        showErrorToast('Rename folder failed', await getApiErrorMessage(response, 'Could not rename folder.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Rename folder failed:', err);
+      showErrorToast('Rename folder failed', err?.message || 'Network error while renaming folder.');
     }
   };
 
@@ -346,9 +371,12 @@ export default function NotesPage() {
           setSelectedNote({ ...selectedNote, folderId: null, folder: null });
         }
         setDeletingFolder(null);
+      } else {
+        showErrorToast('Delete folder failed', await getApiErrorMessage(response, 'Could not delete folder.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete folder failed:', err);
+      showErrorToast('Delete folder failed', err?.message || 'Network error while deleting folder.');
     }
   };
 

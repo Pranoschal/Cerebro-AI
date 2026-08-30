@@ -22,7 +22,10 @@ import {
   Save,
 } from 'lucide-react';
 import ModelSelector from '@/components/ModelSelector';
+import AISummaryModal from '@/components/AISummaryModal';
 import { authFetch } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/lib/api-errors';
+import { showErrorToast, showSuccessToast } from '@/lib/toast-notifications';
 
 interface NoteEditorProps {
   note: {
@@ -64,7 +67,8 @@ export default function NoteEditor({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isSuggestingTags, setIsSuggestingTags] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>('llama-3.3-70b-versatile');
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>('');
 
   // AI Writing Copilot state
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
@@ -83,6 +87,7 @@ export default function NoteEditor({
       setFolderId(note.folderId || (note.folder ? note.folder.id : null));
       setSaveStatus('synced');
       setHasUnsavedChanges(false);
+      setIsSummaryModalOpen(false);
     } else {
       setTitle('');
       setContent('');
@@ -171,16 +176,50 @@ export default function NoteEditor({
         setHasUnsavedChanges(false);
       } else {
         setSaveStatus('unsaved');
+        showErrorToast('Failed to save note', await getApiErrorMessage(response, 'Could not save your changes.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save note:', err);
       setSaveStatus('unsaved');
+      showErrorToast('Failed to save note', err?.message || 'Network error while saving.');
     }
   };
 
   // AI Copilot Action Generator
+  const mergeContinueContent = (existing: string, generated: string) => {
+    const base = existing.trim();
+    const addition = generated.trim();
+    if (!base) return addition;
+    if (!addition) return base;
+    // Model returned the full note including existing content — replace, don't duplicate
+    if (addition.startsWith(base)) return addition;
+    const prefix = base.slice(0, Math.min(120, base.length));
+    if (prefix.length > 40 && addition.startsWith(prefix)) return addition;
+    return `${base}\n\n${addition}`;
+  };
+
+  const mergeOutlineContent = (existing: string, generated: string) => {
+    const base = existing.trim();
+    const outline = generated.trim();
+    if (!base) return outline;
+    if (!outline) return base;
+    if (base.endsWith(outline)) return base;
+    if (base.includes(`\n\n${outline}`)) return base;
+    if (outline.startsWith(base)) return `${base}\n\n${outline.slice(base.length).trim()}` || base;
+    const prefix = base.slice(0, Math.min(120, base.length));
+    if (prefix.length > 40 && outline.startsWith(prefix)) {
+      const stripped = outline.slice(base.length).trim();
+      return stripped ? `${base}\n\n${stripped}` : base;
+    }
+    return `${base}\n\n${outline}`;
+  };
+
   const handleAICopilotAction = async (action: 'continue' | 'outline' | 'polish' | 'custom', customPrompt?: string) => {
-    if (!note) return;
+    if (!note || isCopilotGenerating) return;
+    if (!selectedModel) {
+      showErrorToast('AI Assist unavailable', 'Select a Groq model before using AI Assist.');
+      return;
+    }
     setIsCopilotGenerating(true);
     setIsCopilotOpen(false);
     setCopilotStatusMsg(
@@ -210,25 +249,26 @@ export default function NoteEditor({
         const data = await response.json();
         if (data.result) {
           let nextContent = content;
-          if (action === 'polish' || action === 'custom') {
-            nextContent = data.result;
+          if (action === 'continue') {
+            nextContent = mergeContinueContent(content, data.result);
+          } else if (action === 'outline') {
+            nextContent = mergeOutlineContent(content, data.result);
           } else {
-            nextContent = content.trim() ? `${content.trim()}\n\n${data.result}` : data.result;
+            nextContent = data.result;
           }
           setContent(nextContent);
           setHasUnsavedChanges(true);
           setSaveStatus('unsaved');
-          setCopilotStatusMsg('Content inserted! Click Save Note.');
+          setCopilotStatusMsg(
+            action === 'outline' ? 'Outline added below your note! Click Save Note.' : 'Content inserted! Click Save Note.'
+          );
           setTimeout(() => setCopilotStatusMsg(null), 3500);
         }
       } else {
-        const err = await response.json();
-        setCopilotStatusMsg(`AI Error: ${err.error || 'Request failed'}`);
-        setTimeout(() => setCopilotStatusMsg(null), 4000);
+        showErrorToast('AI Assist failed', await getApiErrorMessage(response, 'Could not generate content.'));
       }
     } catch (e: any) {
-      setCopilotStatusMsg(`AI Error: ${e.message}`);
-      setTimeout(() => setCopilotStatusMsg(null), 4000);
+      showErrorToast('AI Assist failed', e?.message || 'Network error while generating content.');
     } finally {
       setIsCopilotGenerating(false);
     }
@@ -237,12 +277,21 @@ export default function NoteEditor({
   // AI Summarization
   const handleSummarize = async () => {
     if (!content.trim() || !note) return;
+    if (!selectedModel) {
+      showErrorToast('Summarize unavailable', 'Select a Groq model first.');
+      return;
+    }
     setIsSummarizing(true);
     try {
       const response = await authFetch('/api/ai/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, title, model: selectedModel }),
+        body: JSON.stringify({
+          noteId: note.id,
+          content,
+          title,
+          model: selectedModel,
+        }),
       });
 
       if (response.ok) {
@@ -250,9 +299,14 @@ export default function NoteEditor({
         setSummary(data.summary);
         setHasUnsavedChanges(true);
         setSaveStatus('unsaved');
+        setIsSummaryModalOpen(true);
+        showSuccessToast('Summary generated', 'Save the note to keep the summary.');
+      } else {
+        showErrorToast('Summarize failed', await getApiErrorMessage(response, 'Could not summarize this note.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to summarize note:', err);
+      showErrorToast('Summarize failed', err?.message || 'Network error while summarizing.');
     } finally {
       setIsSummarizing(false);
     }
@@ -261,29 +315,37 @@ export default function NoteEditor({
   // AI Tag Suggestions
   const handleSuggestTags = async () => {
     if (!content.trim() || !note) return;
+    if (!selectedModel) {
+      showErrorToast('Auto Tag unavailable', 'Select a Groq model first.');
+      return;
+    }
     setIsSuggestingTags(true);
     try {
       const response = await authFetch('/api/ai/tag-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          noteId: note.id,
           content,
           title,
-          existingTags: availableTags.map((t) => t.name),
           model: selectedModel,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const suggested: string[] = data.suggestedTags || [];
+        const suggested: string[] = data.suggestedTags || data.tags || [];
         const merged = Array.from(new Set([...tags, ...suggested]));
         setTags(merged);
         setHasUnsavedChanges(true);
         setSaveStatus('unsaved');
+        showSuccessToast('Tags suggested', `Added ${suggested.length} tag suggestion${suggested.length === 1 ? '' : 's'}.`);
+      } else {
+        showErrorToast('Auto Tag failed', await getApiErrorMessage(response, 'Could not suggest tags.'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to suggest tags:', err);
+      showErrorToast('Auto Tag failed', err?.message || 'Network error while suggesting tags.');
     } finally {
       setIsSuggestingTags(false);
     }
@@ -470,7 +532,7 @@ export default function NoteEditor({
                         Brainstorm Outline
                       </div>
                       <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                        Add structured bullet outline & key ideas
+                        Add outline below existing content
                       </div>
                     </div>
                   </button>
@@ -507,7 +569,7 @@ export default function NoteEditor({
                           handleAICopilotAction('custom', customCopilotPrompt);
                         }
                       }}
-                      placeholder="e.g. Write me a note on RAG and RAG Systems..."
+                      placeholder="e.g. Write me a note on elephants..."
                       className="bg-transparent border-none outline-none text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 w-full resize-none leading-relaxed"
                     />
                     <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60 dark:border-white/5">
@@ -540,6 +602,19 @@ export default function NoteEditor({
             <span className="hidden sm:inline">{isSummarizing ? 'Summarizing...' : 'AI Summary'}</span>
             <span className="sm:hidden">{isSummarizing ? '...' : 'Summary'}</span>
           </button>
+
+          {summary && (
+            <button
+              type="button"
+              onClick={() => setIsSummaryModalOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 sm:py-1.5 rounded-xl bg-indigo-600/10 dark:bg-indigo-500/20 hover:bg-indigo-600/20 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 border border-indigo-300/60 dark:border-indigo-500/40 text-[11px] sm:text-xs font-semibold transition-all"
+              title="View AI summary"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">View Summary</span>
+              <span className="sm:hidden">View</span>
+            </button>
+          )}
 
           <button
             onClick={handleSuggestTags}
@@ -645,29 +720,19 @@ export default function NoteEditor({
             />
           </div>
         </div>
-
-        {/* AI Summary Highlight Panel */}
-        {summary && (
-          <div className="mt-3 sm:mt-4 p-3 sm:p-3.5 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/30 text-xs text-indigo-900 dark:text-indigo-200 backdrop-blur-md relative group animate-in fade-in">
-            <div className="flex items-center justify-between font-semibold text-indigo-700 dark:text-indigo-300 mb-1">
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> AI Executive Summary
-              </span>
-              <button
-                onClick={() => {
-                  setSummary(null);
-                  setHasUnsavedChanges(true);
-                }}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
-                title="Dismiss summary"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <p className="leading-relaxed whitespace-pre-line text-slate-700 dark:text-slate-300 text-[11px] sm:text-xs">{summary}</p>
-          </div>
-        )}
       </div>
+
+      <AISummaryModal
+        open={isSummaryModalOpen && !!summary}
+        onOpenChange={setIsSummaryModalOpen}
+        summary={summary || ''}
+        noteTitle={title}
+        onClear={() => {
+          setSummary(null);
+          setHasUnsavedChanges(true);
+          setSaveStatus('unsaved');
+        }}
+      />
 
       {/* Editor & Preview Responsive Split/Tabbed Pane */}
       <div className="flex-1 flex overflow-hidden px-4 sm:px-8 pb-4 sm:pb-6 pt-2 gap-4 lg:gap-6">

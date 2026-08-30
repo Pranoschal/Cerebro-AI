@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { callGroqChat } from '@/lib/ai';
+import { resolveGroqModelId } from '@/lib/groq-models';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { noteId, model } = body;
+    const { noteId, model, content, title } = body;
 
     if (!noteId) {
       return NextResponse.json({ error: 'noteId is required' }, { status: 400 });
@@ -25,7 +26,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
 
-    const prompt = `Title: ${note.title}\n\nContent:\n${note.content}`;
+    const noteContent = typeof content === 'string' ? content : note.content;
+    const noteTitle = typeof title === 'string' ? title : note.title;
+
+    if (!noteContent.trim()) {
+      return NextResponse.json({ error: 'Note content is empty' }, { status: 400 });
+    }
+
+    const modelUsed = await resolveGroqModelId(model);
+    const prompt = `Title: ${noteTitle}\n\nContent:\n${noteContent}`;
     const result = await callGroqChat(
       [
         {
@@ -38,7 +47,7 @@ export async function POST(req: NextRequest) {
           content: prompt,
         },
       ],
-      { model, jsonMode: true }
+      { model: modelUsed, jsonMode: true }
     );
 
     let parsedTags: string[] = [];
@@ -48,11 +57,10 @@ export async function POST(req: NextRequest) {
         parsedTags = parsed.tags.map((t: string) => t.toLowerCase().trim().replace(/[^a-z0-9-_]/g, ''));
       }
     } catch {
-      // Fallback regex extractor if JSON parse fails
       parsedTags = (result.match(/[a-zA-Z0-9_-]+/g) || []).slice(0, 4);
     }
 
-    return NextResponse.json({ tags: parsedTags });
+    return NextResponse.json({ tags: parsedTags, suggestedTags: parsedTags, modelUsed });
   } catch (error: any) {
     console.error('POST /api/ai/tag-suggest error:', error);
     return NextResponse.json({ error: error.message || 'Tag suggestion failed' }, { status: 500 });

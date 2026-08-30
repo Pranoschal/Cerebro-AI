@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Sparkles, SlidersHorizontal, Tag, Folder as FolderIcon, X, Zap } from 'lucide-react';
 import { authFetch } from '@/lib/api-client';
+import { getApiErrorMessage } from '@/lib/api-errors';
+import { showErrorToast } from '@/lib/toast-notifications';
 
 interface SearchBarProps {
   onSearchResults: (results: any[], isSearching: boolean, queryInfo: { text: string; mode: string }) => void;
@@ -93,9 +95,14 @@ export default function SearchBar({
       if (response.ok) {
         const data = await response.json();
         onSearchResults(data.results || [], false, { text: query, mode });
+      } else {
+        showErrorToast('Search failed', await getApiErrorMessage(response, 'Could not search your notes.'));
+        onSearchResults([], false, { text: query, mode });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Search request failed:', err);
+      showErrorToast('Search failed', err?.message || 'Network error while searching.');
+      onSearchResults([], false, { text: query, mode });
     } finally {
       setIsLoading(false);
     }

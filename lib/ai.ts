@@ -1,114 +1,119 @@
-// Groq LLM API Wrapper for Summarization, Tag Extraction, and RAG Q&A
+import { APICallError, generateObject, generateText } from 'ai';
+import { createGroq } from '@ai-sdk/groq';
+import { z } from 'zod';
+import { resolveGroqModelId } from '@/lib/groq-models';
 
-export async function callGroqChat(
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
-  options: { model?: string; temperature?: number; max_tokens?: number; jsonMode?: boolean } = {}
-): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY;
-  const model = options.model && !options.model.includes('qwen3.6')
-    ? options.model
-    : 'llama-3.3-70b-versatile';
+export type ChatMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
 
-  if (apiKey && apiKey.trim() !== '') {
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: options.temperature ?? 0.3,
-          max_tokens: options.max_tokens ?? 1024,
-          ...(options.jsonMode ? { response_format: { type: 'json_object' } } : {}),
-        }),
-      });
+export type GroqChatOptions = {
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  jsonMode?: boolean;
+};
 
-      if (response.ok) {
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || '';
-      }
-      const errText = await response.text();
-      console.warn('Groq API returned error:', errText);
-    } catch (e) {
-      console.error('Groq API invocation failed:', e);
-    }
-  }
+const tagSuggestionSchema = z.object({
+  tags: z.array(z.string()),
+});
 
-  // Fallback AI simulation for local development without API keys
-  return simulateAIFallback(messages);
+function getGroqProvider() {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) return null;
+  return createGroq({ apiKey });
 }
 
-function simulateAIFallback(
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
-): string {
-  const lastUserMsg = messages[messages.length - 1]?.content || '';
-  const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
+function splitMessages(messages: ChatMessage[]): {
+  system?: string;
+  prompt: string;
+  conversationMessages: Array<{ role: 'user' | 'assistant'; content: string }>;
+} {
+  const systemParts = messages.filter((m) => m.role === 'system').map((m) => m.content.trim());
+  const conversationMessages = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }));
 
-  // Extract user instruction / topic from prompt if structured
-  const userInstruction = lastUserMsg.match(/User (?:Request|Instruction):\s*"?([^"\n]+)"?/i)?.[1] || lastUserMsg;
+  const system = systemParts.length > 0 ? systemParts.join('\n\n') : undefined;
+  const lastUser = [...conversationMessages].reverse().find((m) => m.role === 'user');
 
-  // 1. Summarization request
-  if (systemMsg.includes('summarize') || lastUserMsg.includes('Summarize')) {
-    const lines = lastUserMsg.split('\n').filter((l) => l.trim().length > 0);
-    const keyPoints = lines.slice(0, 3).map((l) => `• ${l.replace(/^[#*-]\s*/, '').slice(0, 80)}...`);
-    return `### Summary\nThis note highlights key insights and action items:\n${keyPoints.join('\n')}\n\n*Generated via Groq Llama 3*`;
+  return {
+    system,
+    prompt: lastUser?.content ?? conversationMessages[conversationMessages.length - 1]?.content ?? '',
+    conversationMessages,
+  };
+}
+
+function formatGroqError(error: unknown): Error {
+  if (APICallError.isInstance(error)) {
+    const detail =
+      typeof error.responseBody === 'string' ? error.responseBody.slice(0, 300) : error.message;
+    return new Error(`Groq API error (${error.statusCode ?? 'unknown'}): ${detail}`);
   }
 
-  // 2. Tag suggestions
-  if (systemMsg.includes('tag') || lastUserMsg.includes('tags')) {
-    const defaultTags = ['ideas', 'productivity', 'architecture', 'notes', 'planning'];
-    return JSON.stringify({ tags: defaultTags.slice(0, 4) });
+  if (error instanceof Error) {
+    return error;
   }
 
-  // 3. Custom writing / Copilot note generation request
-  if (
-    systemMsg.includes('copilot') ||
-    systemMsg.includes('co-writer') ||
-    systemMsg.includes('editor') ||
-    userInstruction.toLowerCase().includes('write')
-  ) {
-    const rawTopic = userInstruction
-      .replace(/^(?:User Request:\s*"?|User Instruction:\s*"?)/i, '')
-      .replace(/^(?:Write|Draft|Create|Generate|Explain|Summarize)\s*(?:me\s*)?(?:a\s*)?(?:detailed\s*)?(?:note\s*)?(?:essay\s*)?/i, '')
-      .replace(/^(?:in\s*\d+\s*words\s*)?/i, '')
-      .replace(/^(?:about|on|regarding)\s*/i, '')
-      .replace(/"?\s*$/i, '')
-      .trim();
-    const topic = rawTopic ? rawTopic.charAt(0).toUpperCase() + rawTopic.slice(1) : 'Requested Topic';
-    const existingContentMatch = lastUserMsg.match(/Existing Note Content[^\n]*:\n([\s\S]+)/i);
-    const existingContent = existingContentMatch ? existingContentMatch[1].trim() : '';
-    if (existingContent) {
-      return `${existingContent}\n\n### Additional Synthesis: ${topic}\n- **Integrated Detail**: Enhanced existing note with key principles of ${topic}.\n- **Core Focus**: Ensures structured execution, vector indexing, and clean note organization.`;
+  return new Error('Groq API request failed');
+}
+
+// Groq LLM wrapper via Vercel AI SDK for summarization, tag extraction, RAG Q&A, and note copilot
+export async function callGroqChat(
+  messages: ChatMessage[],
+  options: GroqChatOptions = {}
+): Promise<string> {
+  const groqProvider = getGroqProvider();
+  const modelId = await resolveGroqModelId(options.model);
+  const temperature = options.temperature ?? 0.3;
+  const maxOutputTokens = options.max_tokens ?? 1024;
+
+  if (!groqProvider) {
+    throw new Error(
+      'GROQ_API_KEY is not configured. Add a valid key to .env to enable AI features.'
+    );
+  }
+
+  try {
+    const { system, prompt, conversationMessages } = splitMessages(messages);
+    const model = groqProvider(modelId);
+
+    if (options.jsonMode) {
+      const { object } = await generateObject({
+        model,
+        schema: tagSuggestionSchema,
+        system,
+        prompt,
+        temperature,
+        maxOutputTokens,
+      });
+      return JSON.stringify(object);
     }
 
-    return `## Overview of ${topic}
+    const useConversation =
+      conversationMessages.length > 1 ||
+      (conversationMessages.length === 1 && conversationMessages[0].role === 'assistant');
 
-### Core Concepts & Architecture
-- **Definition**: ${topic} provides a structured framework for data retrieval, knowledge synthesis, and intelligent automation.
-- **Key Objectives**: Improve contextual accuracy, reduce latency, and enable scalable information access across workspaces.
+    const { text } = await generateText({
+      model,
+      system,
+      ...(useConversation ? { messages: conversationMessages } : { prompt }),
+      temperature,
+      maxOutputTokens,
+    });
 
-### System Workflow
-1. **Ingestion & Indexing**: Incoming notes and documents are chunked and converted into high-dimensional vector embeddings.
-2. **Vector Retrieval**: Semantic similarity search matches queries against indexed embeddings using vector database collections.
-3. **Contextual Generation**: Retrieved context is augmented into the LLM prompt to generate grounded, precise responses.
+    if (!text?.trim()) {
+      throw new Error('Groq returned an empty response');
+    }
 
-### Implementation Best Practices
-- [x] Implement debounced auto-syncing for note embeddings
-- [x] Configure fast vector similarity search index
-- [ ] Monitor retrieval latency and model token usage`;
+    return text;
+  } catch (error) {
+    const formatted = formatGroqError(error);
+    console.error('Groq chat failed:', formatted.message);
+    throw formatted;
   }
-
-  // 4. Default RAG / Q&A response
-  const cleanTitle = userInstruction.split('\n')[0].replace(/^Note Title:\s*"?/, '').replace(/"?$/, '');
-  return `### Information Synthesis for ${cleanTitle}
-
-Based on your workspace notes, here is the synthesis:
-
-1. **Systematic Architecture**: Notes emphasize structured vector indexing and debounced sync pipelines.
-2. **Contextual RAG Search**: Real-time vector similarity queries retrieve relevant context prior to generation.
-
-*Sources: Notes in your current workspace.*`;
 }
