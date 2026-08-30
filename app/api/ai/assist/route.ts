@@ -22,27 +22,27 @@ export async function POST(req: NextRequest) {
     switch (action) {
       case 'continue':
         systemPrompt =
-          'You are an expert AI co-writer and thought partner. Seamlessly continue and expand upon the user note in markdown. Maintain the existing tone, style, and formatting. Do not repeat the existing content; only output the new continuation text.';
-        userPrompt = `Note Title: "${title}"\n\nCurrent Note Content:\n${noteContent}\n\nPlease continue writing the next section or thoughts:`;
+          'You are an expert AI co-writer. Continue and expand upon the existing note content seamlessly in markdown. Synthesize existing concepts and extend them with detailed explanations, technical context, and relevant next steps. Return the complete updated note content.';
+        userPrompt = `Note Title: "${title}"\n\nCurrent Note Content:\n${noteContent || '(Empty note)'}\n\nPlease expand and continue writing this note:`;
         break;
 
       case 'outline':
         systemPrompt =
-          'You are a strategic brainstorming and outlining assistant. Generate a structured, highly actionable markdown outline or list of key concepts, questions, and action items that would fit into this note.';
-        userPrompt = `Note Title: "${title}"\n\nCurrent Content:\n${noteContent || 'Empty note'}\n\nBrainstorm a structured markdown outline with bullet points:`;
+          'You are a strategic note architect. Analyze the existing note content and transform or extend it into a clean, well-structured, highly readable markdown outline with clear section headers, key takeaways, and action items.';
+        userPrompt = `Note Title: "${title}"\n\nCurrent Content:\n${noteContent || '(Empty note)'}\n\nGenerate a structured markdown outline incorporating existing ideas and new insights:`;
         break;
 
       case 'polish':
         systemPrompt =
-          'You are a professional editor. Polish, refine, and improve the clarity and flow of the provided note while preserving all technical accuracy, markdown formatting, and core ideas. Return the polished version.';
+          'You are a senior technical editor. Polish, refine, and improve the grammar, sentence structure, tone, and flow of the provided note while preserving all core facts, technical details, and code snippets. Return the full polished note in markdown.';
         userPrompt = `Note Title: "${title}"\n\nContent to Polish:\n${noteContent}`;
         break;
 
       case 'custom':
         systemPrompt =
-          'You are an intelligent AI note copilot. If existing note content is provided, work directly on it—refactoring, polishing, expanding, and integrating the user request into a complete, cohesive markdown note. Output only the final markdown body of the note without introductory filler, conversational metadata, or system prefixes.';
-        userPrompt = `User Request: "${prompt || 'Write note content'}"\nNote Title: "${title}"${
-          noteContent ? `\n\nExisting Note Content to refine and build upon:\n${noteContent}` : ''
+          'You are an expert AI note-taking assistant and editor. Your task is to modify, rewrite, expand, or refactor the existing note content according to the user request. DO NOT simply append text to the end. Integrate the requested changes smoothly directly into the existing text, maintaining clean markdown formatting, proper headings, bullet points, and code blocks where appropriate. Do not include chat intro/outro, conversational filler, or system prefixes. Output ONLY the updated, complete markdown note content.';
+        userPrompt = `User Request: "${prompt || 'Enhance and expand note content'}"\nNote Title: "${title}"${
+          noteContent ? `\n\nExisting Note Content to work on:\n${noteContent}` : ''
         }`;
         break;
 
