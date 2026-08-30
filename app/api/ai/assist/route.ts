@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      { model, temperature: 0.5, max_tokens: 1500 }
+      { model, temperature: 0.5, max_tokens: 3000 }
     );
 
     return NextResponse.json({

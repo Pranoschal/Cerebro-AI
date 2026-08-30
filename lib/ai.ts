@@ -70,8 +70,14 @@ function simulateAIFallback(
     systemMsg.includes('editor') ||
     userInstruction.toLowerCase().includes('write')
   ) {
-    const rawTopic = userInstruction.replace(/^Write\s*(?:me\s*)?(?:a\s*)?(?:note\s*)?(?:on\s*)?/i, '').trim();
-    const topic = rawTopic || 'Requested Topic';
+    const rawTopic = userInstruction
+      .replace(/^(?:User Request:\s*"?|User Instruction:\s*"?)/i, '')
+      .replace(/^(?:Write|Draft|Create|Generate|Explain|Summarize)\s*(?:me\s*)?(?:a\s*)?(?:detailed\s*)?(?:note\s*)?(?:essay\s*)?/i, '')
+      .replace(/^(?:in\s*\d+\s*words\s*)?/i, '')
+      .replace(/^(?:about|on|regarding)\s*/i, '')
+      .replace(/"?\s*$/i, '')
+      .trim();
+    const topic = rawTopic ? rawTopic.charAt(0).toUpperCase() + rawTopic.slice(1) : 'Requested Topic';
     const existingContentMatch = lastUserMsg.match(/Existing Note Content[^\n]*:\n([\s\S]+)/i);
     const existingContent = existingContentMatch ? existingContentMatch[1].trim() : '';
     if (existingContent) {
